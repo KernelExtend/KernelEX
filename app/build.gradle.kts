@@ -18,9 +18,21 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("KernelEX.jks")
+            storePassword = "KernelEX"
+            keyAlias = "KernelEX"
+            keyPassword = "KernelEX"
+            enableV1Signing = true
+            enableV2Signing = true
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -28,6 +40,7 @@ android {
         }
         debug {
             applicationIdSuffix = ""
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 

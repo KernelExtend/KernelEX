@@ -5,7 +5,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
-// ROOT 文件管理器服务
+// ROOT 文件管理器服务（具备防路径穿透、Shell 转义安全加固与高效 stat 探测能力）
 object RootFileManager {
 
     // 默认存储工作目录
@@ -26,7 +26,7 @@ object RootFileManager {
         val escapedPath = targetPath.replace("'", "'\\''")
 
         // 采用通用的 shell 循环与 stat 组合，彻底规避各种 Android ROM 下 ls -la 日期与字段格式差异导致的解析失败
-        val cmd = "cd '$escapedPath' 2>/dev/null && for f in .* *; do [ -e \"\$f\" ] || continue; [ \"\$f\" = \".\" ] && continue; [ \"\$f\" = \"..\" ] && continue; [ -d \"\$f\" ] && d=1 || d=0; s=\$(stat -c %s \"\$f\" 2>/dev/null || wc -c < \"\$f\" 2>/dev/null || echo 0); echo \"\$d|\$s|\$f\"; done"
+        val cmd = "cd '$escapedPath' 2>/dev/null && for f in .* *; do [ -e \"\$f\" ] || continue; [ \"\$f\" = \".\" ] && continue; [ \"\$f\" = \"..\" ] && continue; [ -d \"\$f\" ] && d=1 || d=0; s=\$(stat -c %s \"\$f\" 2>/dev/null || echo 0); echo \"\$d|\$s|\$f\"; done"
         val (exitCode, output) = RootService.runCommandSync(cmd)
 
         if (exitCode == 0 && output.isNotBlank()) {
@@ -101,7 +101,7 @@ object RootFileManager {
 
         val sourceFile = File(sourcePath)
         val sourceName = sourceFile.name
-        val nameWithoutExt = sourceFile.nameWithoutExtension
+        val nameWithoutExt = sourceFile.nameWithoutExtension.replace("'", "")
 
         val targetDir = if (useIndependentFolder) {
             val timestamp = (System.currentTimeMillis() % 100000).toString()
@@ -110,7 +110,8 @@ object RootFileManager {
             DEFAULT_KERNEL_EX_DIR
         }
 
-        val createDirCmd = "mkdir -p '$targetDir' && chmod 777 '$targetDir'"
+        val escapedTargetDir = targetDir.replace("'", "'\\''")
+        val createDirCmd = "mkdir -p '$escapedTargetDir' && chmod 777 '$escapedTargetDir'"
         RootService.runCommandSync(createDirCmd)
 
         val destinationPath = "$targetDir/$sourceName"
@@ -132,16 +133,25 @@ object RootFileManager {
         Pair(true, destinationPath)
     }
 
-    // ==================== 文件重命名分区 ====================
+    // ==================== 文件重命名分区（防路径穿透安全校验） ====================
     suspend fun rename(oldPath: String, newName: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        val sanitized = newName.trim()
+        if (sanitized.isEmpty()) {
+            return@withContext Pair(false, "文件名不能为空")
+        }
+        // 防路径跨目录穿透漏洞
+        if (sanitized.contains("/") || sanitized.contains("\\") || sanitized.contains("..") || sanitized.contains("\u0000")) {
+            return@withContext Pair(false, "文件名不能包含路径分隔符或非法字符")
+        }
+
         val parent = File(oldPath).parent ?: "/"
-        val newPath = if (parent.endsWith("/")) "$parent$newName" else "$parent/$newName"
+        val newPath = if (parent.endsWith("/")) "$parent$sanitized" else "$parent/$sanitized"
         val escapedOld = oldPath.replace("'", "'\\''")
         val escapedNew = newPath.replace("'", "'\\''")
 
         val cmd = "mv '$escapedOld' '$escapedNew'"
         val (code, out) = RootService.runCommandSync(cmd)
-        Pair(code == 0, out)
+        Pair(code == 0, if (code == 0) "重命名成功" else out)
     }
 
     // ==================== 文件删除分区 ====================

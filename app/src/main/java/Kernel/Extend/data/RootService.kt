@@ -14,12 +14,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.util.concurrent.ConcurrentLinkedQueue
 
-// ROOT 权限管理与底层 HyperCore 终端引擎服务
+// ROOT 权限管理与底层 HyperCore 终端引擎服务（安全加固与高并发优化版）
 object RootService {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -89,43 +90,50 @@ object RootService {
 """
     }
 
-    // ==================== ROOT 权限检测分区 ====================
+    // ==================== ROOT 权限检测分区（带防挂起超时保护） ====================
     suspend fun checkRoot(force: Boolean = false): Boolean = withContext(Dispatchers.IO) {
         if (!force && isRootGranted == true) return@withContext true
 
-        try {
-            val process = ProcessBuilder("su", "-c", "id").start()
-            val reader = InputStreamReader(process.inputStream)
-            val buffer = CharArray(256)
-            val count = reader.read(buffer)
-            val output = if (count > 0) String(buffer, 0, count) else ""
-            val exitCode = process.waitFor()
-            val granted = exitCode == 0 && output.contains("uid=0")
-            withContext(Dispatchers.Main) {
-                isRootGranted = granted
+        val granted = withTimeoutOrNull(6000L) {
+            try {
+                val process = ProcessBuilder("su", "-c", "id").start()
+                val output = process.inputStream.use { stream ->
+                    InputStreamReader(stream).use { reader ->
+                        val buffer = CharArray(256)
+                        val count = reader.read(buffer)
+                        if (count > 0) String(buffer, 0, count) else ""
+                    }
+                }
+                val exitCode = process.waitFor()
+                exitCode == 0 && output.contains("uid=0")
+            } catch (_: Exception) {
+                false
             }
-            granted
-        } catch (e: Exception) {
-            withContext(Dispatchers.Main) {
-                isRootGranted = false
-            }
-            false
+        } ?: false
+
+        withContext(Dispatchers.Main) {
+            isRootGranted = granted
         }
+        granted
     }
 
-    // ==================== 同步命令执行分区 ====================
+    // ==================== 同步命令执行分区（资源安全流控） ====================
     fun runCommandSync(cmd: String): Pair<Int, String> {
         return try {
             val process = ProcessBuilder("su", "-c", cmd).redirectErrorStream(true).start()
-            val reader = InputStreamReader(process.inputStream, Charsets.UTF_8)
-            val sb = StringBuilder()
-            val buffer = CharArray(1024)
-            var count: Int
-            while (reader.read(buffer).also { count = it } != -1) {
-                sb.append(buffer, 0, count)
+            val result = process.inputStream.use { stream ->
+                InputStreamReader(stream, Charsets.UTF_8).use { reader ->
+                    val sb = StringBuilder()
+                    val buffer = CharArray(1024)
+                    var count: Int
+                    while (reader.read(buffer).also { count = it } != -1) {
+                        sb.append(buffer, 0, count)
+                    }
+                    sb.toString()
+                }
             }
             val exitCode = process.waitFor()
-            Pair(exitCode, sb.toString())
+            Pair(exitCode, result)
         } catch (e: Exception) {
             Pair(-1, e.message ?: "执行异常")
         }
@@ -175,16 +183,16 @@ object RootService {
 
         executionJob?.cancel()
         executionJob = scope.launch(Dispatchers.IO) {
+            var process: Process? = null
             try {
                 // 路径特殊字符单引号转义
                 val escapedParent = parentDir.replace("'", "'\\''")
                 val escapedFile = filePath.replace("'", "'\\''")
 
-                // 核心执行指令：配置标准 Linux 环境、赋权 777 并优先直接执行（适配 ELF 二进制与 Shebang 脚本），失败时兜底以 sh 执行
+                // 核心执行指令：配置标准 Linux 环境、赋权 777 并优先直接执行，失败时以 sh 执行
                 val execCmd = "export PATH=/sbin:/system/sbin:/system/bin:/system/xbin:${'$'}PATH && export TERM=xterm-256color && export LANG=en_US.UTF-8 && cd '$escapedParent' && chmod 777 '$escapedFile' && ( '$escapedFile' || sh '$escapedFile' )"
 
-                // 启动 su 进程，保持标准输入 clean 供交互使用
-                val process = ProcessBuilder("su", "-c", execCmd).redirectErrorStream(true).start()
+                process = ProcessBuilder("su", "-c", execCmd).redirectErrorStream(true).start()
                 activeProcess = process
                 processWriter = OutputStreamWriter(process.outputStream, Charsets.UTF_8)
 
@@ -201,12 +209,15 @@ object RootService {
                 }
 
                 // 实时流式分块读取输出并推入 HyperCore 微批次队列
-                val reader = InputStreamReader(process.inputStream, Charsets.UTF_8)
-                val buffer = CharArray(2048)
-                var count: Int
-                while (reader.read(buffer).also { count = it } != -1) {
-                    val chunk = String(buffer, 0, count)
-                    queueLogChunk(chunk)
+                process.inputStream.use { stream ->
+                    InputStreamReader(stream, Charsets.UTF_8).use { reader ->
+                        val buffer = CharArray(2048)
+                        var count: Int
+                        while (reader.read(buffer).also { count = it } != -1) {
+                            val chunk = String(buffer, 0, count)
+                            queueLogChunk(chunk)
+                        }
+                    }
                 }
 
                 // 等待进程原生退出后打印退出状态
@@ -227,6 +238,12 @@ object RootService {
                     lastExitCode = -1
                 }
             } finally {
+                try {
+                    processWriter?.close()
+                } catch (_: Exception) {}
+                try {
+                    process?.destroy()
+                } catch (_: Exception) {}
                 flushBatchQueueImmediate()
                 withContext(Dispatchers.Main) {
                     isTaskRunning = false
@@ -272,7 +289,7 @@ object RootService {
         }
     }
 
-    // ==================== 结束进程功能分区 ====================
+    // ==================== 结束进程功能分区（Shell 转义安全加固） ====================
     fun killCurrentProcess() {
         scope.launch(Dispatchers.IO) {
             try {
@@ -280,7 +297,8 @@ object RootService {
                     runCommandSync("kill -9 $processPid 2>/dev/null")
                 }
                 currentTaskName?.let { taskName ->
-                    runCommandSync("pkill -9 -f '$taskName' 2>/dev/null")
+                    val escapedTaskName = taskName.replace("'", "'\\''")
+                    runCommandSync("pkill -9 -f '$escapedTaskName' 2>/dev/null")
                 }
                 activeProcess?.destroyForcibly()
                 activeProcess = null

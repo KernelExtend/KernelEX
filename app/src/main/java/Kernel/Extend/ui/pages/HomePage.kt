@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -37,12 +38,11 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-// 主页：执行目标选择与路径输入合并、格式校验与任务运行锁定
+// 主页：执行目标选择、独立文件管理器选择按钮、格式校验与任务运行锁定
 @Composable
 fun HomePage(
     onNavigateToTerminal: () -> Unit
@@ -87,10 +87,22 @@ fun HomePage(
 
     Scaffold(
         topBar = {
-            SmallTopAppBar(
-                title = "KernelEX",
-                color = MiuixTheme.colorScheme.surface
-            )
+            // 统一左上角大标题
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MiuixTheme.colorScheme.surface)
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "KernelEX",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MiuixTheme.colorScheme.onSurface
+                )
+            }
         }
     ) { innerPadding ->
         Column(
@@ -165,7 +177,7 @@ fun HomePage(
                 }
             }
 
-            // ==================== 2. 执行目标选择与手动输入合并分区 ====================
+            // ==================== 2. 执行目标选择分区 ====================
             SmallTitle(
                 text = "执行目标",
                 insideMargin = PaddingValues(start = 0.dp, top = 8.dp, bottom = 4.dp)
@@ -181,7 +193,7 @@ fun HomePage(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
-                    // 路径输入框与文件选择按钮同一卡片集成
+                    // 路径输入框
                     TextField(
                         value = filePathInput,
                         onValueChange = {
@@ -191,20 +203,20 @@ fun HomePage(
                         label = "请输入文件路径",
                         useLabelAsPlaceholder = true,
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        trailingIcon = {
-                            Button(
-                                onClick = { showFilePicker = true },
-                                colors = ButtonDefaults.buttonColors(
-                                    color = MiuixTheme.colorScheme.surfaceContainerHighest,
-                                    contentColor = MiuixTheme.colorScheme.onSurface
-                                ),
-                                insideMargin = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text("选择文件", fontSize = 12.sp)
-                            }
-                        }
+                        modifier = Modifier.fillMaxWidth()
                     )
+
+                    // 独立按钮：从文件管理器选择
+                    Button(
+                        onClick = { showFilePicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            color = MiuixTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MiuixTheme.colorScheme.onSurface
+                        )
+                    ) {
+                        Text("从文件管理器选择", fontWeight = FontWeight.Medium)
+                    }
 
                     // 错误提示文案
                     if (validationError != null) {

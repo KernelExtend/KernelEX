@@ -85,7 +85,7 @@ graph LR
 
 ## 📥 软件下载
 
-所有发布版本均使用官方密钥（`KernelEX.jks`）进行 **APK Signature Scheme v2 + v3** 架构签名。
+所有发布版本均进行 **APK Signature Scheme v2 + v3** 架构签名。
 
 | 发行版本 | 文件名 | 适用场景 | GitHub 下载链接 |
 | :--- | :--- | :--- | :--- |
@@ -106,7 +106,7 @@ cd KernelEX
 # 2. 编译 Debug 调试包
 ./gradlew :app:assembleDebug
 
-# 3. 编译 Release 正式包 (需配置签名文件)
+# 3. 编译 Release 正式包
 ./gradlew :app:assembleRelease
 ```
 

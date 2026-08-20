@@ -273,7 +273,7 @@ fun TerminalPage(
                 TextField(
                     value = inputText,
                     onValueChange = { inputText = it },
-                    label = "输入命令或菜单选项 (如 1, 2, y, n)...",
+                    label = "输入命令或选项 (如 1, 2, y, n)...",
                     useLabelAsPlaceholder = true,
                     singleLine = true,
                     modifier = Modifier.weight(1f),
@@ -298,13 +298,14 @@ fun TerminalPage(
                         color = MiuixTheme.colorScheme.primary,
                         contentColor = MiuixTheme.colorScheme.onPrimary
                     ),
-                    insideMargin = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    insideMargin = PaddingValues(horizontal = 18.dp, vertical = 11.dp)
                 ) {
-                    Text("发送", fontWeight = FontWeight.Bold)
+                    Text("发送", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
 
-            Spacer(modifier = Modifier.height(55.dp))
+            // 预留足够底部安全间距，避免与悬浮底栏发生重叠
+            Spacer(modifier = Modifier.height(88.dp))
         }
     }
 }

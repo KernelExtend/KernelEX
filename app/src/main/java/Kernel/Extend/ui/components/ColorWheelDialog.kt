@@ -80,9 +80,6 @@ private val PRESET_COLOR_GROUPS = listOf(
     PresetColorItem("极光白", Color(0xFFFFFFFF))
 )
 
-// 默认荧光绿
-private val DEFAULT_COLOR = Color(0xFF00E676)
-
 // 颜色选择弹窗：滚轮指示器直接置于色块上方，无需底部滑条
 @Composable
 fun ColorWheelDialog(
@@ -376,54 +373,37 @@ fun ColorWheelDialog(
                 }
             }
 
-            // ==================== 5. 底部操作按键分区 ====================
+            // ==================== 5. 底部操作按键分区 (移除恢复默认) ====================
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(top = 4.dp),
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 恢复默认按钮
                 Button(
-                    onClick = {
-                        val hsv = FloatArray(3)
-                        android.graphics.Color.colorToHSV(DEFAULT_COLOR.toArgb(), hsv)
-                        hue = hsv[0]
-                        saturation = hsv[1]
-                        value = hsv[2]
-                    },
+                    onClick = onDismissRequest,
                     colors = ButtonDefaults.buttonColors(
                         color = MiuixTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MiuixTheme.colorScheme.onSurfaceSecondary
+                        contentColor = MiuixTheme.colorScheme.onSurface
                     )
                 ) {
-                    Text("恢复默认", fontSize = 12.sp)
+                    Text("取消", fontSize = 12.sp)
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = onDismissRequest,
-                        colors = ButtonDefaults.buttonColors(
-                            color = MiuixTheme.colorScheme.surfaceContainerHighest,
-                            contentColor = MiuixTheme.colorScheme.onSurface
-                        )
-                    ) {
-                        Text("取消", fontSize = 12.sp)
-                    }
+                Spacer(modifier = Modifier.width(10.dp))
 
-                    Button(
-                        onClick = {
-                            onColorSelected(currentColor)
-                            onDismissRequest()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            color = MiuixTheme.colorScheme.primary,
-                            contentColor = MiuixTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Text("确定应用", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
+                Button(
+                    onClick = {
+                        onColorSelected(currentColor)
+                        onDismissRequest()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        color = MiuixTheme.colorScheme.primary,
+                        contentColor = MiuixTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text("确定应用", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
         }

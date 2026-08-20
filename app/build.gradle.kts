@@ -56,7 +56,21 @@ android {
 
     packaging {
         resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += setOf(
+                "/META-INF/{AL2.0,LGPL2.1}",
+                "/META-INF/*.version",
+                "/META-INF/*.kotlin_module",
+                "/META-INF/**/LICENSE*",
+                "/META-INF/**/NOTICE*",
+                "/META-INF/**/license*",
+                "/META-INF/**/notice*",
+                "/META-INF/**/*.properties",
+                "DebugProbesKt.bin",
+                "kotlin/**",
+                "kotlin-tooling-metadata.json",
+                "assets/**",
+                "assets/dexopt/**"
+            )
         }
     }
 }
@@ -81,4 +95,11 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
+}
+
+// 禁用 assets 合并与 ART BaselineProfile 生成，彻底移除 APK 中的 assets/ 文件夹
+tasks.matching {
+    it.name.contains("ArtProfile") || (it.name.startsWith("merge") && it.name.endsWith("Assets"))
+}.configureEach {
+    enabled = false
 }

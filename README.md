@@ -5,15 +5,20 @@
 **下一代 Android 高性能 ROOT 任务调度与执行引擎**
 
 [![Release](https://img.shields.io/github/v/release/KernelExtend/KernelEX?style=flat-square&color=00e5ff&label=Release)](https://github.com/KernelExtend/KernelEX/releases)
+[![Telegram](https://img.shields.io/badge/Telegram-Channel-229ED9.svg?style=flat-square&logo=telegram&logoColor=white)](https://t.me/KernelEX)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Android](https://img.shields.io/badge/Android-8.0%2B%20%28API%2026%2B%29-3DDC84.svg?style=flat-square&logo=android&logoColor=white)](https://developer.android.com)
 [![ROOT](https://img.shields.io/badge/ROOT-Magisk%20%7C%20KernelSU%20%7C%20APatch-orange.svg?style=flat-square)](https://github.com/topjohnwu/Magisk)
 [![Signing](https://img.shields.io/badge/Signature-V2%20%2B%20V3%20Scheme-brightgreen.svg?style=flat-square)](https://github.com/KernelExtend/KernelEX/releases)
 [![Website](https://img.shields.io/badge/Website-kernelextend.github.io-purple.svg?style=flat-square)](https://kernelextend.github.io/)
 
-[官方网站 (Docs & Downloads)](https://kernelextend.github.io/) • [GitHub 仓库](https://github.com/KernelExtend/KernelEX) • [下载最新版 (Releases)](https://github.com/KernelExtend/KernelEX/releases/tag/v1.0.0)
+[官方网站 (Docs & Downloads)](https://kernelextend.github.io/) • [Telegram 官方频道](https://t.me/KernelEX) • [GitHub 仓库](https://github.com/KernelExtend/KernelEX) • [下载最新版 (Releases)](https://github.com/KernelExtend/KernelEX/releases/tag/v1.0.0)
 
 </div>
+
+---
+
+> 📢 **欢迎加入我们的官方 Telegram 频道**：[**https://t.me/KernelEX**](https://t.me/KernelEX)，第一时间获取最新发布动态、更新日志与极客讨论！
 
 ---
 
@@ -117,6 +122,14 @@ KernelEX 经过严格的安全审计，具备以下安全机制：
 3. **资源流自动回收 (Resource Leak Prevention)**：所有底层 Process 流采用 Kotlin `use { }` 自动安全回收；
 4. **ROOT 检测超时熔断**：防范因授权管理器挂起导致的协程死锁；
 5. **本地备份防护**：已禁用 `allowBackup`，杜绝通过 ADB 提取敏感数据。
+
+---
+
+## 💬 社区与支持
+
+* **Telegram 官方频道**：[https://t.me/KernelEX](https://t.me/KernelEX)
+* **GitHub 组织**：[https://github.com/KernelExtend](https://github.com/KernelExtend)
+* **官方网站**：[https://kernelextend.github.io/](https://kernelextend.github.io/)
 
 ---
 

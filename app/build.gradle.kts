@@ -24,8 +24,9 @@ android {
             storePassword = "KernelEX"
             keyAlias = "KernelEX"
             keyPassword = "KernelEX"
-            enableV1Signing = true
+            enableV1Signing = false
             enableV2Signing = true
+            enableV3Signing = true
         }
     }
 

@@ -230,7 +230,7 @@ fun HomePage(
 
                     // 格式支持说明
                     Text(
-                        text = "支持直接执行 .sh 脚本与 .so 二进制程序文件，执行时将自动赋予 777 权限并以 ROOT 身份运行",
+                        text = "支持输入文件路径或选择文件进行执行，目前仅支持 .sh 和 .so 文件",
                         style = MiuixTheme.textStyles.footnote2,
                         color = MiuixTheme.colorScheme.onSurfaceSecondary
                     )

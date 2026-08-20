@@ -80,7 +80,7 @@ private val PRESET_COLOR_GROUPS = listOf(
     PresetColorItem("极光白", Color(0xFFFFFFFF))
 )
 
-// 颜色选择弹窗：滚轮指示器直接置于色块上方，无需底部滑条
+// 颜色选择弹窗：滚轮指示器直接置于色块上方
 @Composable
 fun ColorWheelDialog(
     show: Boolean,
@@ -127,7 +127,6 @@ fun ColorWheelDialog(
     WindowDialog(
         show = show,
         title = "终端文字颜色",
-        summary = "选择预设极客配色或在色板上滑动滚轮微调",
         onDismissRequest = onDismissRequest
     ) {
         Column(
@@ -186,7 +185,7 @@ fun ColorWheelDialog(
             // ==================== 2. 彩虹全色相色块（滚轮直接置于色块上） ====================
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "色相选择",
+                    text = "色相",
                     style = MiuixTheme.textStyles.footnote2,
                     color = MiuixTheme.colorScheme.onSurfaceSecondary
                 )
@@ -243,7 +242,7 @@ fun ColorWheelDialog(
             // ==================== 3. 明暗度调节色块（滚轮直接置于色块上） ====================
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "明暗微调",
+                    text = "明暗",
                     style = MiuixTheme.textStyles.footnote2,
                     color = MiuixTheme.colorScheme.onSurfaceSecondary
                 )
@@ -309,7 +308,7 @@ fun ColorWheelDialog(
             // ==================== 4. 16 款精选终端配色网格分区 ====================
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "极客预设配色",
+                    text = "预设",
                     style = MiuixTheme.textStyles.footnote2,
                     color = MiuixTheme.colorScheme.onSurfaceSecondary
                 )
@@ -373,7 +372,7 @@ fun ColorWheelDialog(
                 }
             }
 
-            // ==================== 5. 底部操作按键分区 (移除恢复默认) ====================
+            // ==================== 5. 底部操作按键分区 ====================
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

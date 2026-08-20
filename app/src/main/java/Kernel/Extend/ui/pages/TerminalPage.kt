@@ -285,7 +285,7 @@ fun TerminalPage(
                 TextField(
                     value = inputText,
                     onValueChange = { inputText = it },
-                    label = "输入命令或选项 (如 1, 2, y, n)...",
+                    label = "请输入命令...",
                     useLabelAsPlaceholder = true,
                     singleLine = true,
                     modifier = Modifier.weight(1f),

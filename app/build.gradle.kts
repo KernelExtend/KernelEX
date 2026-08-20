@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "Kernel.Extend"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "Kernel.Extend"

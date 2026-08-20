@@ -37,6 +37,8 @@ plugins {
 }
 
 include(":app")
+include(":baselineprofile")
+project(":baselineprofile").projectDir = file("../MIUIX/baselineprofile")
 include(":miuix-core")
 project(":miuix-core").projectDir = file("../MIUIX/miuix-core")
 include(":miuix-ui")

@@ -139,7 +139,7 @@ fun SplashPage(
                 .padding(bottom = 24.dp)
         ) {
             Text(
-                text = "Kernel.Extend v1.0.0",
+                text = "Kernel.Extend v1.0.1",
                 style = MiuixTheme.textStyles.footnote2,
                 color = MiuixTheme.colorScheme.onSurfaceSecondary.copy(alpha = 0.5f)
             )

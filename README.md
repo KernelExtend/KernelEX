@@ -12,7 +12,7 @@
 [![Signing](https://img.shields.io/badge/Signature-V2%20%2B%20V3%20Scheme-brightgreen.svg?style=flat-square)](https://github.com/KernelExtend/KernelEX/releases)
 [![Website](https://img.shields.io/badge/Website-kernelextend.github.io-purple.svg?style=flat-square)](https://kernelextend.github.io/)
 
-[官方网站 (Docs & Downloads)](https://kernelextend.github.io/) • [Telegram 官方频道](https://t.me/KernelEX) • [GitHub 仓库](https://github.com/KernelExtend/KernelEX) • [下载最新版 (Releases)](https://github.com/KernelExtend/KernelEX/releases/tag/v1.0.0)
+[官方网站 (Docs & Downloads)](https://kernelextend.github.io/) • [Telegram 官方频道](https://t.me/KernelEX) • [GitHub 仓库](https://github.com/KernelExtend/KernelEX) • [下载最新版 (Releases)](https://github.com/KernelExtend/KernelEX/releases/tag/v1.0.1)
 
 </div>
 
@@ -89,8 +89,8 @@ graph LR
 
 | 发行版本 | 文件名 | 适用场景 | GitHub 下载链接 |
 | :--- | :--- | :--- | :--- |
-| 🚀 **Release 正式版** | `KernelEX-v1.0.0-release.apk` | 生产日常使用（推荐） | [点击下载 Release 版](https://github.com/KernelExtend/KernelEX/releases/download/v1.0.0/KernelEX-v1.0.0-release.apk) |
-| 🛠️ **Debug 调试版** | `KernelEX-v1.0.0-debug.apk` | 开发者排查与模块调试 | [点击下载 Debug 版](https://github.com/KernelExtend/KernelEX/releases/download/v1.0.0/KernelEX-v1.0.0-debug.apk) |
+| 🚀 **Release 正式版** | `KernelEX-v1.0.1-release.apk` | 生产日常使用（推荐） | [点击下载 Release 版](https://github.com/KernelExtend/KernelEX/releases/download/v1.0.1/KernelEX-v1.0.1-release.apk) |
+| 🛠️ **Debug 调试版** | `KernelEX-v1.0.1-debug.apk` | 开发者排查与模块调试 | [点击下载 Debug 版](https://github.com/KernelExtend/KernelEX/releases/download/v1.0.1/KernelEX-v1.0.1-debug.apk) |
 
 ---
 

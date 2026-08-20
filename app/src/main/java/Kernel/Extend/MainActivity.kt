@@ -32,9 +32,43 @@ import Kernel.Extend.ui.pages.SettingsPage
 import Kernel.Extend.ui.pages.SplashPage
 import Kernel.Extend.ui.pages.TerminalPage
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.TextStyles
 import top.yukonga.miuix.kmp.theme.ThemeController
+
+// 全局自定义字体族 (使用 res/font/app_font.ttf)
+val AppFontFamily = FontFamily(
+    Font(R.font.app_font, FontWeight.Normal),
+    Font(R.font.app_font, FontWeight.Medium),
+    Font(R.font.app_font, FontWeight.Bold),
+    Font(R.font.app_font, FontWeight.SemiBold)
+)
+
+// 将 MIUIX 默认 TextStyle 全面注入自定义字体
+@Composable
+fun createCustomTextStyles(fontFamily: FontFamily): TextStyles {
+    val base = MiuixTheme.textStyles
+    return base.copy(
+        main = base.main.copy(fontFamily = fontFamily),
+        paragraph = base.paragraph.copy(fontFamily = fontFamily),
+        body1 = base.body1.copy(fontFamily = fontFamily),
+        body2 = base.body2.copy(fontFamily = fontFamily),
+        button = base.button.copy(fontFamily = fontFamily),
+        footnote1 = base.footnote1.copy(fontFamily = fontFamily),
+        footnote2 = base.footnote2.copy(fontFamily = fontFamily),
+        headline1 = base.headline1.copy(fontFamily = fontFamily),
+        headline2 = base.headline2.copy(fontFamily = fontFamily),
+        subtitle = base.subtitle.copy(fontFamily = fontFamily),
+        title1 = base.title1.copy(fontFamily = fontFamily),
+        title2 = base.title2.copy(fontFamily = fontFamily),
+        title3 = base.title3.copy(fontFamily = fontFamily),
+        title4 = base.title4.copy(fontFamily = fontFamily)
+    )
+}
 
 // 软件主入口 Activity
 class MainActivity : ComponentActivity() {
@@ -59,7 +93,12 @@ class MainActivity : ComponentActivity() {
                 ThemeController(colorSchemeMode = colorSchemeMode)
             }
 
-            MiuixTheme(controller = themeController) {
+            val customTextStyles = createCustomTextStyles(AppFontFamily)
+
+            MiuixTheme(
+                controller = themeController,
+                textStyles = customTextStyles
+            ) {
                 AppRootContent(appSettings = appSettings)
             }
         }

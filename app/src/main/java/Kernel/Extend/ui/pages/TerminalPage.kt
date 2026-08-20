@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,6 +50,7 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -109,65 +108,53 @@ fun TerminalPage(
 
     Scaffold(
         topBar = {
-            // 单行顶栏：终端标题左上角与操作按钮同行平齐
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MiuixTheme.colorScheme.surface)
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "终端",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MiuixTheme.colorScheme.onSurface
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    // 按钮1: 复制输出
-                    Button(
-                        onClick = { copyOutput() },
-                        colors = ButtonDefaults.buttonColors(
-                            color = MiuixTheme.colorScheme.surfaceContainerHighest,
-                            contentColor = MiuixTheme.colorScheme.onSurface
-                        ),
-                        insideMargin = PaddingValues(horizontal = 8.dp, vertical = 3.dp)
+            SmallTopAppBar(
+                title = "终端",
+                color = MiuixTheme.colorScheme.surface,
+                actions = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text("复制输出", fontSize = 12.sp)
-                    }
+                        // 按钮1: 复制输出
+                        Button(
+                            onClick = { copyOutput() },
+                            colors = ButtonDefaults.buttonColors(
+                                color = MiuixTheme.colorScheme.surfaceContainerHighest,
+                                contentColor = MiuixTheme.colorScheme.onSurface
+                            ),
+                            insideMargin = PaddingValues(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text("复制输出", fontSize = 12.sp)
+                        }
 
-                    // 按钮2: 结束进程 (任务运行时高亮可点)
-                    Button(
-                        enabled = RootService.isTaskRunning,
-                        onClick = { RootService.killCurrentProcess() },
-                        colors = ButtonDefaults.buttonColors(
-                            color = MiuixTheme.colorScheme.error.copy(0.18f),
-                            contentColor = MiuixTheme.colorScheme.error
-                        ),
-                        insideMargin = PaddingValues(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text("结束进程", fontSize = 12.sp)
-                    }
+                        // 按钮2: 结束进程 (任务运行时高亮可点)
+                        Button(
+                            enabled = RootService.isTaskRunning,
+                            onClick = { RootService.killCurrentProcess() },
+                            colors = ButtonDefaults.buttonColors(
+                                color = MiuixTheme.colorScheme.error.copy(0.18f),
+                                contentColor = MiuixTheme.colorScheme.error
+                            ),
+                            insideMargin = PaddingValues(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text("结束进程", fontSize = 12.sp)
+                        }
 
-                    // 按钮3: 重启终端
-                    Button(
-                        onClick = { RootService.restartTerminal() },
-                        colors = ButtonDefaults.buttonColors(
-                            color = MiuixTheme.colorScheme.primary.copy(0.15f),
-                            contentColor = MiuixTheme.colorScheme.primary
-                        ),
-                        insideMargin = PaddingValues(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text("重启终端", fontSize = 12.sp)
+                        // 按钮3: 重启终端
+                        Button(
+                            onClick = { RootService.restartTerminal() },
+                            colors = ButtonDefaults.buttonColors(
+                                color = MiuixTheme.colorScheme.primary.copy(0.15f),
+                                contentColor = MiuixTheme.colorScheme.primary
+                            ),
+                            insideMargin = PaddingValues(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text("重启终端", fontSize = 12.sp)
+                        }
                     }
                 }
-            }
+            )
         }
     ) { innerPadding ->
         Column(
@@ -237,7 +224,7 @@ fun TerminalPage(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 中断任务按钮 (Ctrl+C)
+                // 中断任务按钮
                 Button(
                     enabled = RootService.isTaskRunning,
                     onClick = { RootService.sendInterrupt() },
@@ -245,9 +232,9 @@ fun TerminalPage(
                         color = MiuixTheme.colorScheme.error.copy(0.18f),
                         contentColor = MiuixTheme.colorScheme.error
                     ),
-                    insideMargin = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    insideMargin = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                 ) {
-                    Text("^C 中断", fontSize = 12.sp)
+                    Text("中断", fontSize = 12.sp)
                 }
 
                 // 清屏按钮
@@ -271,9 +258,9 @@ fun TerminalPage(
                         color = MiuixTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MiuixTheme.colorScheme.onSurface
                     ),
-                    insideMargin = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    insideMargin = PaddingValues(horizontal = 14.dp, vertical = 4.dp)
                 ) {
-                    Text("↵ Enter", fontSize = 12.sp)
+                    Text("Enter", fontSize = 12.sp)
                 }
             }
 

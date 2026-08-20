@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -39,6 +37,7 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -88,22 +87,10 @@ fun HomePage(
 
     Scaffold(
         topBar = {
-            // 统一左上角大标题
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MiuixTheme.colorScheme.surface)
-                    .statusBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "KernelEX",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MiuixTheme.colorScheme.onSurface
-                )
-            }
+            SmallTopAppBar(
+                title = "KernelEX",
+                color = MiuixTheme.colorScheme.surface
+            )
         }
     ) { innerPadding ->
         Column(
@@ -251,37 +238,6 @@ fun HomePage(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                }
-            }
-
-            // ==================== 3. 快速操作引导分区 ====================
-            SmallTitle(
-                text = "快捷引导",
-                insideMargin = PaddingValues(start = 0.dp, top = 8.dp, bottom = 4.dp)
-            )
-
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    horizontalAlignment = Alignment.Start
-                ) {
-                    Text(
-                        text = "💡 提示",
-                        style = MiuixTheme.textStyles.headline1,
-                        fontWeight = FontWeight.Bold,
-                        color = MiuixTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "• 您可以在底栏切换至【文件】页面浏览设备上的文件，点击或长按文件可快速添加到 KernelEX 执行目录。\n• 执行任务时终端会自动切换并流式加载脚本输出，支持交互式输入数字与文本。\n• 任务执行结束后再次选择文件执行，终端将自动重置并重启控制台。",
-                        style = MiuixTheme.textStyles.body2,
-                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                        lineHeight = 20.sp
-                    )
                 }
             }
 

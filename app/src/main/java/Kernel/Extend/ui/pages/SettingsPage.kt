@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -50,6 +49,7 @@ import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.ArrowRight
@@ -66,13 +66,19 @@ fun SettingsPage(
     val context = LocalContext.current
     var showColorDialog by remember { mutableStateOf(false) }
 
-    // 深色模式选项（使用 OverlaySpinnerPreference）
+    // 深色模式选项：开启 / 关闭 / 跟随系统（顺序按用户要求，无额外介绍）
     val darkModeOptions = remember {
         listOf(
-            DropdownItem(text = "跟随系统", summary = "跟随系统设置自动切换浅色与深色模式"),
-            DropdownItem(text = "关闭 (浅色)", summary = "始终保持浅色明亮主题"),
-            DropdownItem(text = "开启 (深色)", summary = "始终保持深色暗黑主题")
+            DropdownItem(text = "开启"),
+            DropdownItem(text = "关闭"),
+            DropdownItem(text = "跟随系统")
         )
+    }
+
+    val selectedDarkModeIndex = when (appSettings.darkModeOption) {
+        2 -> 0 // 开启
+        1 -> 1 // 关闭
+        else -> 2 // 跟随系统
     }
 
     // 仅通过独立浏览器打开网页链接（避免被 GitHub 官方 App 拦截）
@@ -121,22 +127,10 @@ fun SettingsPage(
 
     Scaffold(
         topBar = {
-            // 统一左上角大标题
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MiuixTheme.colorScheme.surface)
-                    .statusBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "设置",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MiuixTheme.colorScheme.onSurface
-                )
-            }
+            SmallTopAppBar(
+                title = "设置",
+                color = MiuixTheme.colorScheme.surface
+            )
         }
     ) { innerPadding ->
         Column(
@@ -204,12 +198,19 @@ fun SettingsPage(
                     }
                 )
 
-                // 功能2: 深色模式 (OverlaySpinnerPreference 下拉菜单)
+                // 功能2: 深色模式 (OverlaySpinnerPreference 下拉菜单：开启 / 关闭 / 跟随系统)
                 OverlaySpinnerPreference(
                     title = "深色模式",
                     items = darkModeOptions,
-                    selectedIndex = appSettings.darkModeOption,
-                    onSelectedIndexChange = { appSettings.setDarkMode(it) }
+                    selectedIndex = selectedDarkModeIndex,
+                    onSelectedIndexChange = { index ->
+                        val mode = when (index) {
+                            0 -> 2 // 开启
+                            1 -> 1 // 关闭
+                            else -> 0 // 跟随系统
+                        }
+                        appSettings.setDarkMode(mode)
+                    }
                 )
 
                 // 功能3: 悬浮底栏

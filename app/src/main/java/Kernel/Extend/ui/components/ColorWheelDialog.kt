@@ -4,13 +4,17 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,19 +32,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowDialog
+import kotlin.math.roundToInt
 
 // 预设高频终端主题颜色模型
 private data class PresetColorItem(
@@ -75,7 +83,7 @@ private val PRESET_COLOR_GROUPS = listOf(
 // 默认荧光绿
 private val DEFAULT_COLOR = Color(0xFF00E676)
 
-// 颜色选择弹窗：支持实时终端效果预览、色相与亮度滑块调节、16 款分类配色快选
+// 颜色选择弹窗：滚轮指示器直接置于色块上方，无需底部滑条
 @Composable
 fun ColorWheelDialog(
     show: Boolean,
@@ -84,6 +92,8 @@ fun ColorWheelDialog(
     onColorSelected: (Color) -> Unit
 ) {
     if (!show) return
+
+    val density = LocalDensity.current
 
     // HSV 初始值分解计算
     val initialHsv = remember(initialColor) {
@@ -117,20 +127,10 @@ fun ColorWheelDialog(
         )
     }
 
-    // 亮度渐变画刷
-    val brightnessBrush = remember(hue, saturation) {
-        Brush.horizontalGradient(
-            colors = listOf(
-                Color.Black,
-                Color.hsv(hue, saturation, 1f)
-            )
-        )
-    }
-
     WindowDialog(
         show = show,
         title = "终端文字颜色",
-        summary = "选择预设配色或通过下方滑块微调",
+        summary = "选择预设极客配色或在色板上滑动滚轮微调",
         onDismissRequest = onDismissRequest
     ) {
         Column(
@@ -139,192 +139,252 @@ fun ColorWheelDialog(
                 .padding(horizontal = 4.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // ==================== 1. 终端效果实时模拟与色值展示分区 ====================
-            Row(
+            // ==================== 1. 实时终端控制台效果预览分区 ====================
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFF0D1117))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF141416))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Column(horizontalAlignment = Alignment.Start) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = "root@android:~# KernelEX",
-                        style = androidx.compose.ui.text.TextStyle(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = currentColor
-                        )
+                        text = "PREVIEW",
+                        color = Color.White.copy(0.4f),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "任务执行成功 [退出码: 0]",
-                        style = androidx.compose.ui.text.TextStyle(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            color = currentColor.copy(alpha = 0.85f)
-                        )
+                        text = hexString,
+                        color = currentColor,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
                     )
                 }
 
-                // 十六进制色块徽章
-                Box(
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = "root@android:~# KernelEX --status",
+                    color = currentColor,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "[KernelEX] 任务执行成功 [退出码: 0]",
+                    color = currentColor,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
+            // ==================== 2. 彩虹全色相色块（滚轮直接置于色块上） ====================
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "色相选择",
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary
+                )
+
+                BoxWithConstraints(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(currentColor.copy(alpha = 0.2f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .fillMaxWidth()
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(17.dp))
+                        .background(rainbowBrush)
+                        .pointerInput(Unit) {
+                            fun updateHue(x: Float, maxWidthPx: Float) {
+                                val clampedX = x.coerceIn(0f, maxWidthPx)
+                                hue = (clampedX / maxWidthPx) * 360f
+                                if (saturation < 0.2f) saturation = 1.0f
+                                if (value < 0.3f) value = 1.0f
+                            }
+
+                            detectTapGestures { offset ->
+                                updateHue(offset.x, size.width.toFloat())
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, _ ->
+                                change.consume()
+                                val clampedX = change.position.x.coerceIn(0f, size.width.toFloat())
+                                hue = (clampedX / size.width.toFloat()) * 360f
+                                if (saturation < 0.2f) saturation = 1.0f
+                                if (value < 0.3f) value = 1.0f
+                            }
+                        }
                 ) {
-                    Text(
-                        text = hexString,
-                        style = androidx.compose.ui.text.TextStyle(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = currentColor
-                        )
+                    val widthPx = with(density) { maxWidth.toPx() }
+                    val thumbDiameter = 28.dp
+                    val thumbDiameterPx = with(density) { thumbDiameter.toPx() }
+                    val thumbX = (hue / 360f * (widthPx - thumbDiameterPx)).coerceIn(0f, widthPx - thumbDiameterPx)
+
+                    // 直接位于色块上的圆形选色滚轮游标
+                    Box(
+                        modifier = Modifier
+                            .offset { IntOffset(thumbX.roundToInt(), with(density) { 3.dp.toPx().roundToInt() }) }
+                            .size(thumbDiameter)
+                            .shadow(4.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .border(2.dp, Color(0xFF222226), CircleShape)
+                            .padding(3.dp)
+                            .clip(CircleShape)
+                            .background(Color.hsv(hue, 1f, 1f))
                     )
                 }
             }
 
-            // ==================== 2. 16款分类预设调色板分区（4x4 网格整齐排列） ====================
-            Text(
-                text = "极客预设配色",
-                style = MiuixTheme.textStyles.footnote1,
-                color = MiuixTheme.colorScheme.onSurfaceSecondary
-            )
+            // ==================== 3. 明暗度调节色块（滚轮直接置于色块上） ====================
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "明暗微调",
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary
+                )
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(130.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                userScrollEnabled = false
-            ) {
-                items(PRESET_COLOR_GROUPS) { item ->
-                    val isSelected = hexString.equals(
-                        String.format("#%06X", 0xFFFFFF and item.color.toArgb()),
-                        ignoreCase = true
+                val brightnessBrush = remember(hue, saturation) {
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Black,
+                            Color.hsv(hue, saturation.coerceIn(0.1f, 1f), 1f),
+                            Color.White
+                        )
                     )
+                }
 
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                if (isSelected) MiuixTheme.colorScheme.surfaceContainerHighest
-                                else MiuixTheme.colorScheme.surfaceContainerHighest.copy(0.4f)
-                            )
-                            .then(
-                                if (isSelected) Modifier.border(1.5.dp, item.color, RoundedCornerShape(10.dp))
-                                else Modifier
-                            )
-                            .clickable {
-                                val hsv = FloatArray(3)
-                                android.graphics.Color.colorToHSV(item.color.toArgb(), hsv)
-                                hue = hsv[0]
-                                saturation = hsv[1]
-                                value = hsv[2]
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(17.dp))
+                        .background(brightnessBrush)
+                        .pointerInput(Unit) {
+                            fun updateBrightness(x: Float, maxWidthPx: Float) {
+                                val clampedX = x.coerceIn(0f, maxWidthPx)
+                                val ratio = clampedX / maxWidthPx
+                                value = (0.2f + ratio * 0.8f).coerceIn(0.2f, 1f)
                             }
-                            .padding(horizontal = 6.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Box(
+
+                            detectTapGestures { offset ->
+                                updateBrightness(offset.x, size.width.toFloat())
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, _ ->
+                                change.consume()
+                                val clampedX = change.position.x.coerceIn(0f, size.width.toFloat())
+                                val ratio = clampedX / size.width.toFloat()
+                                value = (0.2f + ratio * 0.8f).coerceIn(0.2f, 1f)
+                            }
+                        }
+                ) {
+                    val widthPx = with(density) { maxWidth.toPx() }
+                    val thumbDiameter = 28.dp
+                    val thumbDiameterPx = with(density) { thumbDiameter.toPx() }
+                    val progress = ((value - 0.2f) / 0.8f).coerceIn(0f, 1f)
+                    val thumbX = (progress * (widthPx - thumbDiameterPx)).coerceIn(0f, widthPx - thumbDiameterPx)
+
+                    // 直接位于色块上的明暗滚轮游标
+                    Box(
+                        modifier = Modifier
+                            .offset { IntOffset(thumbX.roundToInt(), with(density) { 3.dp.toPx().roundToInt() }) }
+                            .size(thumbDiameter)
+                            .shadow(4.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .border(2.dp, Color(0xFF222226), CircleShape)
+                            .padding(3.dp)
+                            .clip(CircleShape)
+                            .background(currentColor)
+                    )
+                }
+            }
+
+            // ==================== 4. 16 款精选终端配色网格分区 ====================
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "极客预设配色",
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary
+                )
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(130.dp)
+                ) {
+                    items(PRESET_COLOR_GROUPS) { item ->
+                        val isSelected = hexString == String.format("#%06X", 0xFFFFFF and item.color.toArgb())
+
+                        Row(
                             modifier = Modifier
-                                .size(14.dp)
-                                .clip(CircleShape)
-                                .background(item.color)
-                        )
-                        Text(
-                            text = item.name,
-                            style = MiuixTheme.textStyles.footnote2,
-                            fontSize = 11.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) MiuixTheme.colorScheme.onSurface else MiuixTheme.colorScheme.onSurfaceSecondary,
-                            maxLines = 1
-                        )
+                                .fillMaxWidth()
+                                .height(28.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (isSelected) item.color.copy(alpha = 0.25f)
+                                    else MiuixTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
+                                )
+                                .border(
+                                    width = if (isSelected) 1.5.dp else 0.dp,
+                                    color = if (isSelected) item.color else Color.Transparent,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .clickable {
+                                    val hsv = FloatArray(3)
+                                    android.graphics.Color.colorToHSV(item.color.toArgb(), hsv)
+                                    hue = hsv[0]
+                                    saturation = hsv[1]
+                                    value = hsv[2]
+                                }
+                                .padding(horizontal = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .clip(CircleShape)
+                                    .background(item.color)
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (item.color == Color.White) Color.Gray.copy(0.5f) else Color.Transparent,
+                                        shape = CircleShape
+                                    )
+                            )
+                            Text(
+                                text = item.name,
+                                fontSize = 10.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) item.color else MiuixTheme.colorScheme.onSurface,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }
 
-            // ==================== 3. 色相与明暗滑块微调分区 ====================
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                // 色相滑条
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "色相调节",
-                        style = MiuixTheme.textStyles.footnote2,
-                        color = MiuixTheme.colorScheme.onSurfaceSecondary
-                    )
-                    Text(
-                        text = "${hue.toInt()}°",
-                        style = MiuixTheme.textStyles.footnote2,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(rainbowBrush)
-                )
-                Slider(
-                    value = hue,
-                    onValueChange = { hue = it },
-                    valueRange = 0f..360f,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // 亮度滑条
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "明暗亮度",
-                        style = MiuixTheme.textStyles.footnote2,
-                        color = MiuixTheme.colorScheme.onSurfaceSecondary
-                    )
-                    Text(
-                        text = "${(value * 100).toInt()}%",
-                        style = MiuixTheme.textStyles.footnote2,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(brightnessBrush)
-                )
-                Slider(
-                    value = value,
-                    onValueChange = { value = it },
-                    valueRange = 0.2f..1f,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            // ==================== 4. 底部操作按键分区 ====================
+            // ==================== 5. 底部操作按键分区 ====================
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 4.dp),
+                    .padding(top = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 恢复默认按键
+                // 恢复默认按钮
                 Button(
                     onClick = {
                         val hsv = FloatArray(3)
@@ -336,8 +396,7 @@ fun ColorWheelDialog(
                     colors = ButtonDefaults.buttonColors(
                         color = MiuixTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MiuixTheme.colorScheme.onSurfaceSecondary
-                    ),
-                    insideMargin = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    )
                 ) {
                     Text("恢复默认", fontSize = 12.sp)
                 }
@@ -350,7 +409,7 @@ fun ColorWheelDialog(
                             contentColor = MiuixTheme.colorScheme.onSurface
                         )
                     ) {
-                        Text("取消")
+                        Text("取消", fontSize = 12.sp)
                     }
 
                     Button(
@@ -363,7 +422,7 @@ fun ColorWheelDialog(
                             contentColor = MiuixTheme.colorScheme.onPrimary
                         )
                     ) {
-                        Text("确定应用")
+                        Text("确定应用", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }

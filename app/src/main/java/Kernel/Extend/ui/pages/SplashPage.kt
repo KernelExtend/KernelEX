@@ -1,3 +1,6 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend.ui.pages
 
 import android.os.Build
@@ -39,7 +42,6 @@ import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-// 启动页面：每次软件启动时展示并二次进行 ROOT 与存储权限环境检查
 @Composable
 fun SplashPage(
     onCheckPassed: () -> Unit,
@@ -95,7 +97,6 @@ fun SplashPage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // 图标展示区
             Image(
                 painter = painterResource(id = R.drawable.ic_kernelex),
                 contentDescription = "KernelEX 图标",
@@ -106,7 +107,6 @@ fun SplashPage(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 软件名称
             Text(
                 text = "KernelEX",
                 style = MiuixTheme.textStyles.title1,
@@ -116,7 +116,6 @@ fun SplashPage(
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // 进度指示与状态提示
             CircularProgressIndicator(
                 modifier = Modifier.size(28.dp)
             )
@@ -131,7 +130,6 @@ fun SplashPage(
             )
         }
 
-        // 底部版本信息
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -139,7 +137,7 @@ fun SplashPage(
                 .padding(bottom = 24.dp)
         ) {
             Text(
-                text = "Kernel.Extend v1.0.1",
+                text = "Kernel.Extend v1.0.2",
                 style = MiuixTheme.textStyles.footnote2,
                 color = MiuixTheme.colorScheme.onSurfaceSecondary.copy(alpha = 0.5f)
             )

@@ -1,3 +1,6 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend
 
 import android.app.Application

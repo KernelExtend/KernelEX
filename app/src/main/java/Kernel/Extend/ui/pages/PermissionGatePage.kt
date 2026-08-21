@@ -1,9 +1,14 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend.ui.pages
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +41,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import Kernel.Extend.data.RootService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -48,18 +57,18 @@ import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-// 权限拦截与环境检查页面
 @Composable
 fun PermissionGatePage(
     onPermissionsGranted: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     var isCheckingRoot by remember { mutableStateOf(false) }
     var hasStoragePermission by remember { mutableStateOf(false) }
+    var isIgnoringBattery by remember { mutableStateOf(false) }
 
-    // 存储权限检查函数
     fun checkStoragePermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             Environment.isExternalStorageManager()
@@ -68,14 +77,31 @@ fun PermissionGatePage(
         }
     }
 
-    // 1秒轮询自动检测权限状态
+    fun checkBatteryOptimization(): Boolean {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        return powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+    }
+
+    fun refreshAllChecks() {
+        hasStoragePermission = checkStoragePermission()
+        isIgnoringBattery = checkBatteryOptimization()
+        scope.launch {
+            val rootOk = RootService.checkRoot()
+            if (rootOk && checkStoragePermission()) {
+                onPermissionsGranted()
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         hasStoragePermission = checkStoragePermission()
+        isIgnoringBattery = checkBatteryOptimization()
         RootService.checkRoot()
 
         while (isActive) {
             val storageOk = checkStoragePermission()
             hasStoragePermission = storageOk
+            isIgnoringBattery = checkBatteryOptimization()
             val rootOk = RootService.checkRoot(force = true)
 
             if (rootOk && storageOk) {
@@ -83,6 +109,18 @@ fun PermissionGatePage(
                 break
             }
             delay(1000)
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshAllChecks()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -103,7 +141,6 @@ fun PermissionGatePage(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            // ==================== 1. 说明提示分区 ====================
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -134,7 +171,6 @@ fun PermissionGatePage(
                 }
             }
 
-            // ==================== 2. ROOT 权限卡片分区 ====================
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -216,7 +252,6 @@ fun PermissionGatePage(
                 }
             }
 
-            // ==================== 3. 存储权限卡片分区 ====================
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -288,7 +323,84 @@ fun PermissionGatePage(
                 }
             }
 
-            // ==================== 4. 进入软件主操作分区 ====================
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isIgnoringBattery) Color(0xFF00E676) else Color(0xFFFFB300)
+                                )
+                        )
+                        Spacer(modifier = Modifier.size(10.dp))
+                        Text(
+                            text = "忽略电池优化 (后台保活 - 可选)",
+                            style = MiuixTheme.textStyles.title4,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MiuixTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Text(
+                        text = if (isIgnoringBattery) {
+                            "✓ 已开启忽略电池优化，任务可持久在后台运行"
+                        } else {
+                            "建议开启忽略电池优化，防止长时间后台执行任务时被系统休眠查杀。若暂不开启，后续可随时在「设置」中二次申请。"
+                        },
+                        style = MiuixTheme.textStyles.body2,
+                        color = if (isIgnoringBattery) Color(0xFF00E676) else MiuixTheme.colorScheme.onSurfaceSecondary,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (!isIgnoringBattery) {
+                        Button(
+                            onClick = {
+                                try {
+                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                        data = Uri.parse("package:${context.packageName}")
+                                    }
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {
+                                    try {
+                                        val intent2 = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                        context.startActivity(intent2)
+                                    } catch (_: Exception) {
+                                        try {
+                                            val intent3 = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                                data = Uri.parse("package:${context.packageName}")
+                                            }
+                                            context.startActivity(intent3)
+                                        } catch (_: Exception) {}
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                color = MiuixTheme.colorScheme.surfaceContainerHighest,
+                                contentColor = MiuixTheme.colorScheme.onSurface
+                            )
+                        ) {
+                            Text("申请忽略电池优化")
+                        }
+                    }
+                }
+            }
+
             val allGranted = RootService.isRootGranted == true && hasStoragePermission
             Button(
                 onClick = onPermissionsGranted,
@@ -302,7 +414,7 @@ fun PermissionGatePage(
                 )
             ) {
                 Text(
-                    text = if (allGranted) "全部权限就绪，进入软件" else "环境检查中 (每1秒自动检测)...",
+                    text = if (allGranted) "全部权限就绪，进入软件" else "环境检查中...",
                     style = MiuixTheme.textStyles.title4
                 )
             }

@@ -1,3 +1,6 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend.ui.pages
 
 import android.content.ClipData
@@ -24,6 +27,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -40,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import Kernel.Extend.data.AnsiParser
@@ -57,43 +63,37 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Clear
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-// 终端执行控制台页面
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TerminalPage(
     appSettings: AppSettings
 ) {
     val context = LocalContext.current
+    val isMaterial = appSettings.appThemeOption == AppSettings.THEME_MATERIAL
     var inputText by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // 主题文字颜色配置
     val terminalDefaultColor = remember(appSettings.terminalTextColor) {
         Color(appSettings.terminalTextColor)
     }
 
-    // ANSI 终端控制字符解析
     val parsedOutput = remember(RootService.outputLog, terminalDefaultColor) {
         AnsiParser.parseAnsi(RootService.outputLog, terminalDefaultColor)
     }
 
-    // 监听软键盘弹出状态
     val isImeVisible = WindowInsets.isImeVisible
 
-    // 终端文字自动滚动到底部（新内容到达或点击输入框键盘弹出时自动上移）
     LaunchedEffect(RootService.outputLog.length, isImeVisible) {
         delay(60)
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
-    // 发送输入内容至终端
     fun handleSend(textToSend: String = inputText) {
         RootService.sendInput(textToSend)
         inputText = ""
     }
 
-    // 复制全部输出内容至系统剪贴板
     fun copyOutput() {
         try {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
@@ -108,7 +108,6 @@ fun TerminalPage(
 
     Scaffold(
         topBar = {
-            // 统一左上角大标题与操作按钮同行平齐
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -129,7 +128,6 @@ fun TerminalPage(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // 按钮1: 复制输出
                     Button(
                         onClick = { copyOutput() },
                         colors = ButtonDefaults.buttonColors(
@@ -141,7 +139,6 @@ fun TerminalPage(
                         Text("复制输出", fontSize = 12.sp)
                     }
 
-                    // 按钮2: 结束进程 (任务运行时高亮可点)
                     Button(
                         enabled = RootService.isTaskRunning,
                         onClick = { RootService.killCurrentProcess() },
@@ -154,7 +151,6 @@ fun TerminalPage(
                         Text("结束进程", fontSize = 12.sp)
                     }
 
-                    // 按钮3: 重启终端
                     Button(
                         onClick = { RootService.restartTerminal() },
                         colors = ButtonDefaults.buttonColors(
@@ -169,15 +165,23 @@ fun TerminalPage(
             }
         }
     ) { innerPadding ->
+        val bottomNavPadding = if (isImeVisible) 0.dp else innerPadding.calculateBottomPadding()
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = bottomNavPadding
+                )
                 .imePadding()
-                .padding(horizontal = 14.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(
+                    start = 14.dp,
+                    end = 14.dp,
+                    top = 4.dp,
+                    bottom = if (isImeVisible) 0.dp else 4.dp
+                ),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // ==================== 1. 终端控制台主屏分区 ====================
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -201,7 +205,6 @@ fun TerminalPage(
                     }
                 }
 
-                // 运行状态指示器 (右上角微标)
                 Row(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -230,13 +233,11 @@ fun TerminalPage(
                 }
             }
 
-            // ==================== 2. 控制指令操作条分区 ====================
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 中断任务按钮
                 Button(
                     enabled = RootService.isTaskRunning,
                     onClick = { RootService.sendInterrupt() },
@@ -244,39 +245,57 @@ fun TerminalPage(
                         color = MiuixTheme.colorScheme.error.copy(0.18f),
                         contentColor = MiuixTheme.colorScheme.error
                     ),
-                    insideMargin = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    insideMargin = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = if (isMaterial) Modifier.clip(RoundedCornerShape(20.dp)) else Modifier
                 ) {
                     Text("中断", fontSize = 12.sp)
                 }
 
-                // 清屏按钮
                 Button(
                     onClick = { RootService.clearOutput() },
                     colors = ButtonDefaults.buttonColors(
                         color = MiuixTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MiuixTheme.colorScheme.onSurface
                     ),
-                    insideMargin = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    insideMargin = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = if (isMaterial) Modifier.clip(RoundedCornerShape(20.dp)) else Modifier
                 ) {
                     Text("清屏", fontSize = 12.sp)
                 }
 
+                if (!RootService.isTaskRunning && RootService.lastExecutedPath != null) {
+                    Button(
+                        onClick = {
+                            RootService.lastExecutedPath?.let { path ->
+                                RootService.executeFile(path)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            color = MiuixTheme.colorScheme.primary.copy(0.18f),
+                            contentColor = MiuixTheme.colorScheme.primary
+                        ),
+                        insideMargin = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = if (isMaterial) Modifier.clip(RoundedCornerShape(20.dp)) else Modifier
+                    ) {
+                        Text("重新运行", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+
                 Spacer(modifier = Modifier.weight(1f))
 
-                // 回车快捷键
                 Button(
                     onClick = { handleSend("") },
                     colors = ButtonDefaults.buttonColors(
                         color = MiuixTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MiuixTheme.colorScheme.onSurface
                     ),
-                    insideMargin = PaddingValues(horizontal = 14.dp, vertical = 4.dp)
+                    insideMargin = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                    modifier = if (isMaterial) Modifier.clip(RoundedCornerShape(20.dp)) else Modifier
                 ) {
                     Text("Enter", fontSize = 12.sp)
                 }
             }
 
-            // ==================== 3. 终端命令与交互输入框分区 ====================
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -288,6 +307,12 @@ fun TerminalPage(
                     label = "请输入命令...",
                     useLabelAsPlaceholder = true,
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(
+                        onSend = {
+                            handleSend(inputText)
+                        }
+                    ),
                     modifier = Modifier.weight(1f),
                     trailingIcon = {
                         if (inputText.isNotEmpty()) {
@@ -304,20 +329,21 @@ fun TerminalPage(
                 Button(
                     onClick = {
                         handleSend(inputText)
-                        keyboardController?.hide()
                     },
                     colors = ButtonDefaults.buttonColors(
                         color = MiuixTheme.colorScheme.primary,
                         contentColor = MiuixTheme.colorScheme.onPrimary
                     ),
-                    insideMargin = PaddingValues(horizontal = 18.dp, vertical = 11.dp)
+                    insideMargin = PaddingValues(horizontal = 18.dp, vertical = 11.dp),
+                    modifier = if (isMaterial) Modifier.clip(RoundedCornerShape(20.dp)) else Modifier
                 ) {
                     Text("发送", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
 
-            // 预留足够底部安全间距，避免与悬浮底栏发生重叠
-            Spacer(modifier = Modifier.height(88.dp))
+            if (!isImeVisible) {
+                Spacer(modifier = Modifier.height(76.dp))
+            }
         }
     }
 }

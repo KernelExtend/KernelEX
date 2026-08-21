@@ -1,3 +1,6 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend.ui.pages
 
 import android.content.ClipData
@@ -26,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,37 +40,102 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import android.os.PowerManager
+import java.io.File
+import Kernel.Extend.AppFontFamily
 import Kernel.Extend.R
 import Kernel.Extend.data.AppSettings
 import Kernel.Extend.ui.components.ColorWheelDialog
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
+import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.ArrowRight
+import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.window.WindowDialog
 
-// 设置页面：包含 文件、主题、终端、关于 四大功能分区
 @Composable
 fun SettingsPage(
     appSettings: AppSettings
 ) {
     val context = LocalContext.current
-    var showColorDialog by remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val powerManager = remember(context) { context.getSystemService(Context.POWER_SERVICE) as? PowerManager }
+    var isIgnoringBattery by remember {
+        mutableStateOf(powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true)
+    }
 
-    // 深色模式选项：开启 / 关闭 / 跟随系统（顺序按用户要求，无额外介绍）
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isIgnoringBattery = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    val isMaterial = appSettings.appThemeOption == AppSettings.THEME_MATERIAL
+    var showColorDialog by remember { mutableStateOf(false) }
+    var showFontDialog by remember { mutableStateOf(false) }
+
+    val fontPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                var fileName = "custom_font.ttf"
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1 && cursor.moveToFirst()) {
+                        fileName = cursor.getString(nameIndex) ?: "custom_font.ttf"
+                    }
+                }
+
+                val destFile = File(context.filesDir, "custom_app_font.ttf")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                val typeface = android.graphics.Typeface.createFromFile(destFile)
+                if (typeface != null) {
+                    appSettings.setCustomFont(destFile.absolutePath, fileName)
+                    Toast.makeText(context, "成功加载字体: $fileName", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "字体解析失败，请选择有效的 TTF / OTF 文件", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "加载字体失败: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     val darkModeOptions = remember {
         listOf(
             DropdownItem(text = "开启"),
@@ -76,12 +145,18 @@ fun SettingsPage(
     }
 
     val selectedDarkModeIndex = when (appSettings.darkModeOption) {
-        2 -> 0 // 开启
-        1 -> 1 // 关闭
-        else -> 2 // 跟随系统
+        2 -> 0
+        1 -> 1
+        else -> 2
     }
 
-    // 仅通过独立浏览器打开网页链接（避免被 GitHub 官方 App 拦截）
+    val appThemeOptions = remember {
+        listOf(
+            DropdownItem(text = "Material"),
+            DropdownItem(text = "Miuix")
+        )
+    }
+
     fun openInBrowserOnly(url: String) {
         try {
             val uri = Uri.parse(url)
@@ -142,15 +217,15 @@ fun SettingsPage(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            // ==================== 1. 文件功能分区 ====================
             SmallTitle(
                 text = "文件",
                 insideMargin = PaddingValues(start = 0.dp, top = 8.dp, bottom = 4.dp)
             )
             Card(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(if (isMaterial) RoundedCornerShape(16.dp) else RoundedCornerShape(12.dp))
             ) {
-                // 功能1: 使用独立文件夹存储
                 SwitchPreference(
                     title = "使用独立文件夹存储",
                     summary = "在添加到KernelEX时新建独立文件夹进行存储",
@@ -158,7 +233,6 @@ fun SettingsPage(
                     onCheckedChange = { appSettings.setIndependentFolder(it) }
                 )
 
-                // 功能2: 添加后自动删除文件
                 SwitchPreference(
                     title = "添加后自动删除文件",
                     summary = "将文件复制到KernelEX后自动清理源文件",
@@ -166,7 +240,6 @@ fun SettingsPage(
                     onCheckedChange = { appSettings.setAutoDelete(it) }
                 )
 
-                // 功能3: 添加后自动执行文件
                 SwitchPreference(
                     title = "添加后自动执行文件",
                     summary = "添加到KernelEX后自动跳转终端并开始执行",
@@ -175,15 +248,15 @@ fun SettingsPage(
                 )
             }
 
-            // ==================== 2. 主题功能分区 ====================
             SmallTitle(
                 text = "主题",
                 insideMargin = PaddingValues(start = 0.dp, top = 8.dp, bottom = 4.dp)
             )
             Card(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(if (isMaterial) RoundedCornerShape(16.dp) else RoundedCornerShape(12.dp))
             ) {
-                // 功能1: 终端文字颜色 (支持精细调色盘与16款预设)
                 ArrowPreference(
                     title = "终端文字颜色",
                     summary = "自定义终端控制台文本的显示高亮颜色",
@@ -198,39 +271,100 @@ fun SettingsPage(
                     }
                 )
 
-                // 功能2: 深色模式 (OverlaySpinnerPreference 下拉菜单：开启 / 关闭 / 跟随系统)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(if (isMaterial) RoundedCornerShape(16.dp) else RoundedCornerShape(12.dp))
+                        .clickable { appSettings.setCustomFontEnabled(!appSettings.useCustomFont) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "自定义软件字体",
+                            fontSize = MiuixTheme.textStyles.headline1.fontSize,
+                            fontWeight = FontWeight.Medium,
+                            color = MiuixTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (appSettings.useCustomFont) {
+                                if (appSettings.customFontPath.isNotEmpty() && appSettings.customFontName.isNotEmpty())
+                                    "当前已启用：${appSettings.customFontName}"
+                                else
+                                    "当前已启用：内置字体"
+                            } else {
+                                "当前使用：系统默认字体"
+                            },
+                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                            color = MiuixTheme.colorScheme.onSurfaceSecondary
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { showFontDialog = true },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = MiuixIcons.Settings,
+                            contentDescription = "配置字体",
+                            tint = MiuixTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Switch(
+                        checked = appSettings.useCustomFont,
+                        onCheckedChange = { enable ->
+                            appSettings.setCustomFontEnabled(enable)
+                        }
+                    )
+                }
+
                 OverlaySpinnerPreference(
                     title = "深色模式",
                     items = darkModeOptions,
                     selectedIndex = selectedDarkModeIndex,
                     onSelectedIndexChange = { index ->
                         val mode = when (index) {
-                            0 -> 2 // 开启
-                            1 -> 1 // 关闭
-                            else -> 0 // 跟随系统
+                            0 -> 2
+                            1 -> 1
+                            else -> 0
                         }
                         appSettings.setDarkMode(mode)
                     }
                 )
 
-                // 功能3: 悬浮底栏
-                SwitchPreference(
-                    title = "悬浮底栏",
-                    summary = "切换底部导航栏为悬浮胶囊样式",
-                    checked = appSettings.enableFloatingDock,
-                    onCheckedChange = { appSettings.setFloatingDock(it) }
+                OverlaySpinnerPreference(
+                    title = "应用主题",
+                    items = appThemeOptions,
+                    selectedIndex = appSettings.appThemeOption,
+                    onSelectedIndexChange = { index ->
+                        appSettings.setAppTheme(index)
+                    }
                 )
+
+                if (appSettings.appThemeOption == AppSettings.THEME_MIUIX) {
+                    SwitchPreference(
+                        title = "悬浮底栏",
+                        summary = "切换底部导航栏为悬浮胶囊样式",
+                        checked = appSettings.enableFloatingDock,
+                        onCheckedChange = { appSettings.setFloatingDock(it) }
+                    )
+                }
             }
 
-            // ==================== 3. 终端功能分区 ====================
             SmallTitle(
                 text = "终端",
                 insideMargin = PaddingValues(start = 0.dp, top = 8.dp, bottom = 4.dp)
             )
             Card(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(if (isMaterial) RoundedCornerShape(16.dp) else RoundedCornerShape(12.dp))
             ) {
-                // 功能1: HyperCore 终端提示
                 SwitchPreference(
                     title = "HyperCore 终端提示",
                     summary = "控制是否在终端显示 HyperCore 引擎初始化及环境检测标头",
@@ -238,22 +372,47 @@ fun SettingsPage(
                     onCheckedChange = { appSettings.setHyperCoreBanner(it) }
                 )
 
-                // 功能2: KernelEX 终端提示
                 SwitchPreference(
                     title = "KernelEX 终端提示",
                     summary = "控制是否在终端显示任务启动、路径及退出状态信息",
                     checked = appSettings.showKernelEXBanner,
                     onCheckedChange = { appSettings.setKernelEXBanner(it) }
                 )
+
+                ArrowPreference(
+                    title = "忽略电池优化 (后台保活)",
+                    summary = if (isIgnoringBattery) "✓ 已开启忽略电池优化，任务可持久在后台运行" else "未开启，点击前往申请开启以防后台被杀",
+                    onClick = {
+                        try {
+                            val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {
+                            try {
+                                val intent2 = Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                context.startActivity(intent2)
+                            } catch (_: Exception) {
+                                try {
+                                    val intent3 = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.parse("package:${context.packageName}")
+                                    }
+                                    context.startActivity(intent3)
+                                } catch (_: Exception) {}
+                            }
+                        }
+                    }
+                )
             }
 
-            // ==================== 4. 关于功能分区 ====================
             SmallTitle(
                 text = "关于",
                 insideMargin = PaddingValues(start = 0.dp, top = 8.dp, bottom = 4.dp)
             )
             Card(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(if (isMaterial) RoundedCornerShape(16.dp) else RoundedCornerShape(12.dp))
             ) {
                 Column(
                     modifier = Modifier
@@ -262,7 +421,6 @@ fun SettingsPage(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
-                    // 头部：圆形图标与应用名称版本
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
@@ -289,7 +447,7 @@ fun SettingsPage(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "v1.0.1 (Kernel.Extend)",
+                                text = "v1.0.2 (Kernel.Extend)",
                                 style = MiuixTheme.textStyles.footnote1,
                                 color = MiuixTheme.colorScheme.onSurfaceSecondary,
                                 textAlign = TextAlign.Start
@@ -297,7 +455,6 @@ fun SettingsPage(
                         }
                     }
 
-                    // 说明文本（靠左对齐）
                     Text(
                         text = "KernelEX 是一款专为 Android 打造的高性能 ROOT 执行工具。支持在安全、高效的环境中运行 .sh 脚本与 .so 二进制文件，提供交互式终端、ANSI 着色以及强大的全盘 ROOT 文件管理能力。",
                         style = MiuixTheme.textStyles.body2,
@@ -309,7 +466,6 @@ fun SettingsPage(
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                    // 链接1: 在浏览器中打开 GitHub 仓库
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -326,7 +482,7 @@ fun SettingsPage(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Image(
-                                painter = painterResource(id = R.drawable.ic_github),
+                                painterResource(id = R.drawable.ic_github),
                                 contentDescription = "GitHub",
                                 modifier = Modifier.size(24.dp)
                             )
@@ -345,7 +501,6 @@ fun SettingsPage(
                         )
                     }
 
-                    // 链接2: 在浏览器中打开 Telegram 官方频道
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -362,7 +517,7 @@ fun SettingsPage(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Image(
-                                painter = painterResource(id = R.drawable.ic_telegram),
+                                painterResource(id = R.drawable.ic_telegram),
                                 contentDescription = "Telegram",
                                 modifier = Modifier.size(24.dp)
                             )
@@ -387,7 +542,6 @@ fun SettingsPage(
         }
     }
 
-    // ==================== 5. 终端颜色选择弹窗分区 ====================
     if (showColorDialog) {
         ColorWheelDialog(
             show = true,
@@ -397,5 +551,137 @@ fun SettingsPage(
                 appSettings.setTerminalColor(color)
             }
         )
+    }
+
+    if (showFontDialog) {
+        val previewFontFamily = remember(appSettings.customFontPath, appSettings.useCustomFont) {
+            if (appSettings.useCustomFont) {
+                if (appSettings.customFontPath.isNotEmpty() && File(appSettings.customFontPath).exists()) {
+                    try {
+                        FontFamily(android.graphics.Typeface.createFromFile(File(appSettings.customFontPath)))
+                    } catch (_: Exception) {
+                        AppFontFamily
+                    }
+                } else {
+                    AppFontFamily
+                }
+            } else {
+                FontFamily.Default
+            }
+        }
+
+        WindowDialog(
+            show = true,
+            title = "自定义软件字体",
+            summary = "支持选择 .ttf 或 .otf 字体文件",
+            onDismissRequest = { showFontDialog = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "当前字体：",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                    Text(
+                        text = if (appSettings.useCustomFont) {
+                            if (appSettings.customFontName.isNotEmpty()) appSettings.customFontName else "内置字体"
+                        } else {
+                            "系统默认字体"
+                        },
+                        color = MiuixTheme.colorScheme.primary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MiuixTheme.colorScheme.surfaceContainerHighest)
+                        .padding(12.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "字体实时预览 Preview",
+                            fontSize = 10.sp,
+                            color = MiuixTheme.colorScheme.onSurfaceSecondary
+                        )
+                        Text(
+                            text = "KernelEX 任务调度引擎",
+                            fontFamily = previewFontFamily,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MiuixTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz 0123456789",
+                            fontFamily = previewFontFamily,
+                            fontSize = 12.sp,
+                            color = MiuixTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            fontPickerLauncher.launch("*/*")
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            color = MiuixTheme.colorScheme.primary,
+                            contentColor = MiuixTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("上传 / 选择字体文件 (.ttf / .otf)")
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                val oldFile = File(context.filesDir, "custom_app_font.ttf")
+                                if (oldFile.exists()) oldFile.delete()
+                                appSettings.resetCustomFont()
+                                Toast.makeText(context, "已恢复默认字体", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                color = MiuixTheme.colorScheme.surfaceContainerHighest,
+                                contentColor = MiuixTheme.colorScheme.error
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("恢复默认字体")
+                        }
+
+                        Button(
+                            onClick = { showFontDialog = false },
+                            colors = ButtonDefaults.buttonColors(
+                                color = MiuixTheme.colorScheme.surfaceContainerHighest,
+                                contentColor = MiuixTheme.colorScheme.onSurface
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("完成")
+                        }
+                    }
+                }
+            }
+        }
     }
 }

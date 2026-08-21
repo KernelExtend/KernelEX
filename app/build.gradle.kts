@@ -1,3 +1,6 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
@@ -12,8 +15,8 @@ android {
         applicationId = "Kernel.Extend"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -97,7 +100,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
 }
 
-// 禁用 assets 合并与 ART BaselineProfile 生成，彻底移除 APK 中的 assets/ 文件夹
 tasks.matching {
     it.name.contains("ArtProfile") || (it.name.startsWith("merge") && it.name.endsWith("Assets"))
 }.configureEach {

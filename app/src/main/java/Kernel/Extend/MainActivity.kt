@@ -1,3 +1,6 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend
 
 import android.os.Bundle
@@ -10,8 +13,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
@@ -22,6 +27,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import java.io.File
 import Kernel.Extend.data.AppSettings
 import Kernel.Extend.data.RootService
 import Kernel.Extend.ui.components.DockBar
@@ -40,7 +47,6 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.TextStyles
 import top.yukonga.miuix.kmp.theme.ThemeController
 
-// 全局自定义字体族 (使用 res/font/app_font.ttf)
 val AppFontFamily = FontFamily(
     Font(R.font.app_font, FontWeight.Normal),
     Font(R.font.app_font, FontWeight.Medium),
@@ -48,7 +54,6 @@ val AppFontFamily = FontFamily(
     Font(R.font.app_font, FontWeight.SemiBold)
 )
 
-// 将 MIUIX 默认 TextStyle 全面注入自定义字体
 @Composable
 fun createCustomTextStyles(fontFamily: FontFamily): TextStyles {
     val base = MiuixTheme.textStyles
@@ -70,30 +75,61 @@ fun createCustomTextStyles(fontFamily: FontFamily): TextStyles {
     )
 }
 
-// 软件主入口 Activity
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // 开启全面屏边到边沉浸式显示
         enableEdgeToEdge()
 
         val appSettings = AppSettings.getInstance(this)
         RootService.initSettings(appSettings)
 
         setContent {
-            // 深色模式配置分区
-            val colorSchemeMode = when (appSettings.darkModeOption) {
-                1 -> ColorSchemeMode.Light
-                2 -> ColorSchemeMode.Dark
-                else -> ColorSchemeMode.System
+            val isMaterial = appSettings.appThemeOption == AppSettings.THEME_MATERIAL
+
+            val colorSchemeMode = if (isMaterial) {
+                when (appSettings.darkModeOption) {
+                    1 -> ColorSchemeMode.MonetLight
+                    2 -> ColorSchemeMode.MonetDark
+                    else -> ColorSchemeMode.MonetSystem
+                }
+            } else {
+                when (appSettings.darkModeOption) {
+                    1 -> ColorSchemeMode.Light
+                    2 -> ColorSchemeMode.Dark
+                    else -> ColorSchemeMode.System
+                }
             }
 
-            val themeController = remember(colorSchemeMode) {
-                ThemeController(colorSchemeMode = colorSchemeMode)
+            val themeController = remember(colorSchemeMode, isMaterial) {
+                ThemeController(
+                    colorSchemeMode = colorSchemeMode,
+                    keyColor = if (isMaterial) Color(0xFF0B57D0) else null
+                )
             }
 
-            val customTextStyles = createCustomTextStyles(AppFontFamily)
+            val activeFontFamily = remember(appSettings.useCustomFont, appSettings.customFontPath) {
+                if (appSettings.useCustomFont) {
+                    if (appSettings.customFontPath.isNotEmpty()) {
+                        val file = File(appSettings.customFontPath)
+                        if (file.exists()) {
+                            try {
+                                FontFamily(android.graphics.Typeface.createFromFile(file))
+                            } catch (_: Exception) {
+                                AppFontFamily
+                            }
+                        } else {
+                            AppFontFamily
+                        }
+                    } else {
+                        AppFontFamily
+                    }
+                } else {
+                    FontFamily.Default
+                }
+            }
+
+            val customTextStyles = createCustomTextStyles(activeFontFamily)
 
             MiuixTheme(
                 controller = themeController,
@@ -105,14 +141,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// 应用生命周期启动状态枚举
 enum class AppLaunchState {
-    SPLASH,          // 启动画面（含二次环境自动检测）
-    PERMISSION_GATE, // 权限缺失引导页
-    MAIN             // 软件主界面
+    SPLASH,
+    PERMISSION_GATE,
+    MAIN
 }
 
-// 根页面调度容器
 @Composable
 fun AppRootContent(appSettings: AppSettings) {
     var launchState by remember { mutableStateOf(AppLaunchState.SPLASH) }
@@ -147,7 +181,7 @@ fun AppRootContent(appSettings: AppSettings) {
     }
 }
 
-// 主界面容器（包含4大页面与底部 DockBar）
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MainContainer(appSettings: AppSettings) {
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 4 })
@@ -158,7 +192,6 @@ fun MainContainer(appSettings: AppSettings) {
             .fillMaxSize()
             .background(MiuixTheme.colorScheme.background)
     ) {
-        // 水平滑动页面容器
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
@@ -166,6 +199,7 @@ fun MainContainer(appSettings: AppSettings) {
         ) { page ->
             when (page) {
                 0 -> HomePage(
+                    appSettings = appSettings,
                     onNavigateToTerminal = {
                         coroutineScope.launch {
                             pagerState.animateScrollToPage(1)
@@ -186,18 +220,18 @@ fun MainContainer(appSettings: AppSettings) {
             }
         }
 
-        // 底部 Dock 导航栏
-        DockBar(
-            selectedPage = pagerState.currentPage,
-            isFloating = appSettings.enableFloatingDock,
-            onTabSelected = { targetPage ->
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(targetPage)
-                }
-            },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .imePadding()
-        )
+        if (!WindowInsets.isImeVisible) {
+            DockBar(
+                selectedPage = pagerState.currentPage,
+                appTheme = appSettings.appThemeOption,
+                isFloating = appSettings.enableFloatingDock,
+                onTabSelected = { targetPage ->
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(targetPage)
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
     }
 }

@@ -1,10 +1,12 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend.data
 
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// 文件信息数据模型
 data class FileItem(
     val name: String,
     val path: String,
@@ -13,23 +15,18 @@ data class FileItem(
     val lastModified: Long = 0L,
     val permissions: String = ""
 ) {
-    // 文件后缀扩展名
     val extension: String
         get() = if (isDirectory) "" else name.substringAfterLast('.', "").lowercase()
 
-    // 是否为可执行脚本 (.sh)
     val isExecutableScript: Boolean
         get() = !isDirectory && extension == "sh"
 
-    // 是否为可执行二进制 (.so)
     val isExecutableBinary: Boolean
         get() = !isDirectory && extension == "so"
 
-    // 是否为支持的执行目标文件
     val isSupportedExecutable: Boolean
         get() = isExecutableScript || isExecutableBinary
 
-    // 格式化文件大小
     val formattedSize: String
         get() {
             if (isDirectory) return "目录"
@@ -44,7 +41,6 @@ data class FileItem(
             }
         }
 
-    // 格式化修改时间
     val formattedDate: String
         get() {
             if (lastModified <= 0) return ""

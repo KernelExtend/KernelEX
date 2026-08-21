@@ -1,3 +1,6 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend.ui.components
 
 import androidx.compose.animation.animateColorAsState
@@ -39,8 +42,8 @@ import top.yukonga.miuix.kmp.icon.extended.Folder
 import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import Kernel.Extend.data.AppSettings
 
-// 矢量图标定义：终端控制台图标
 val TerminalIcon: ImageVector
     get() {
         return ImageVector.Builder(
@@ -50,7 +53,6 @@ val TerminalIcon: ImageVector
             viewportWidth = 24f,
             viewportHeight = 24f
         ).apply {
-            // 终端提示符 >
             path(
                 fill = null,
                 stroke = SolidColor(Color.Black),
@@ -60,7 +62,6 @@ val TerminalIcon: ImageVector
                 lineTo(10f, 12f)
                 lineTo(4f, 17f)
             }
-            // 终端光标 _
             path(
                 fill = null,
                 stroke = SolidColor(Color.Black),
@@ -72,13 +73,11 @@ val TerminalIcon: ImageVector
         }.build()
     }
 
-// 导航项数据模型
 data class DockTabItem(
     val label: String,
     val icon: ImageVector
 )
 
-// 导航分页列表（主页、终端、文件、设置）
 val DOCK_TABS = listOf(
     DockTabItem("主页", MiuixIcons.Home),
     DockTabItem("终端", TerminalIcon),
@@ -86,16 +85,15 @@ val DOCK_TABS = listOf(
     DockTabItem("设置", MiuixIcons.Settings)
 )
 
-// 底部导航栏组件：支持固定贴底样式与悬浮胶囊样式
 @Composable
 fun DockBar(
     selectedPage: Int,
-    isFloating: Boolean,
+    appTheme: Int = AppSettings.THEME_MATERIAL,
+    isFloating: Boolean = false,
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (isFloating) {
-        // ==================== 1. 悬浮胶囊导航栏分区（纯图标模式） ====================
+    if (appTheme == AppSettings.THEME_MIUIX && isFloating) {
         Box(
             modifier = modifier
                 .fillMaxWidth()
@@ -150,8 +148,7 @@ fun DockBar(
                 }
             }
         }
-    } else {
-        // ==================== 2. 固定贴底导航栏分区（默认） ====================
+    } else if (appTheme == AppSettings.THEME_MIUIX) {
         Box(
             modifier = modifier
                 .fillMaxWidth()
@@ -207,6 +204,75 @@ fun DockBar(
                                 text = tab.label,
                                 fontSize = 11.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = contentColor
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .background(MiuixTheme.colorScheme.surfaceContainer)
+                .navigationBarsPadding()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DOCK_TABS.forEachIndexed { index, tab ->
+                    val isSelected = selectedPage == index
+                    val contentColor by animateColorAsState(
+                        targetValue = if (isSelected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceSecondary,
+                        animationSpec = spring(),
+                        label = "MaterialDockColor"
+                    )
+                    val pillColor by animateColorAsState(
+                        targetValue = if (isSelected) MiuixTheme.colorScheme.primary.copy(alpha = 0.16f) else Color.Transparent,
+                        animationSpec = spring(),
+                        label = "MaterialPillColor"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { onTabSelected(index) }
+                            .padding(vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(pillColor)
+                                    .padding(horizontal = 18.dp, vertical = 3.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = tab.icon,
+                                    contentDescription = tab.label,
+                                    tint = contentColor,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = tab.label,
+                                fontSize = 11.sp,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                                 color = contentColor
                             )
                         }

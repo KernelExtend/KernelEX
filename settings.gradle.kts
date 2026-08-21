@@ -1,3 +1,6 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 @file:Suppress("UnstableApiUsage")
 
 rootProject.name = "KernelEX"
@@ -5,7 +8,7 @@ rootProject.name = "KernelEX"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
-    includeBuild("../MIUIX/build-plugins")
+    includeBuild("../../MIUIX/build-plugins")
     repositories {
         google {
             mavenContent {
@@ -38,20 +41,20 @@ plugins {
 
 include(":app")
 include(":baselineprofile")
-project(":baselineprofile").projectDir = file("../MIUIX/baselineprofile")
+project(":baselineprofile").projectDir = file("../../MIUIX/baselineprofile")
 include(":miuix-core")
-project(":miuix-core").projectDir = file("../MIUIX/miuix-core")
+project(":miuix-core").projectDir = file("../../MIUIX/miuix-core")
 include(":miuix-ui")
-project(":miuix-ui").projectDir = file("../MIUIX/miuix-ui")
+project(":miuix-ui").projectDir = file("../../MIUIX/miuix-ui")
 include(":miuix-preference")
-project(":miuix-preference").projectDir = file("../MIUIX/miuix-preference")
+project(":miuix-preference").projectDir = file("../../MIUIX/miuix-preference")
 include(":miuix-icons")
-project(":miuix-icons").projectDir = file("../MIUIX/miuix-icons")
+project(":miuix-icons").projectDir = file("../../MIUIX/miuix-icons")
 include(":miuix-blur")
-project(":miuix-blur").projectDir = file("../MIUIX/miuix-blur")
+project(":miuix-blur").projectDir = file("../../MIUIX/miuix-blur")
 include(":miuix-squircle")
-project(":miuix-squircle").projectDir = file("../MIUIX/miuix-squircle")
+project(":miuix-squircle").projectDir = file("../../MIUIX/miuix-squircle")
 include(":miuix-shader")
-project(":miuix-shader").projectDir = file("../MIUIX/miuix-shader")
+project(":miuix-shader").projectDir = file("../../MIUIX/miuix-shader")
 include(":miuix-navigation3-ui")
-project(":miuix-navigation3-ui").projectDir = file("../MIUIX/miuix-navigation3-ui")
+project(":miuix-navigation3-ui").projectDir = file("../../MIUIX/miuix-navigation3-ui")

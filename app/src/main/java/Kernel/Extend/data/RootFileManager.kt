@@ -1,3 +1,6 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend.data
 
 import kotlinx.coroutines.Dispatchers
@@ -5,27 +8,21 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
-// ROOT 文件管理器服务（具备防路径穿透、Shell 转义安全加固与高效 stat 探测能力）
 object RootFileManager {
 
-    // 默认存储工作目录
     const val DEFAULT_KERNEL_EX_DIR = "/data/adb/KernelEX"
 
-    // ==================== 初始化工作目录分区 ====================
     suspend fun ensureKernelEXDir(): Boolean = withContext(Dispatchers.IO) {
         val cmd = "mkdir -p '$DEFAULT_KERNEL_EX_DIR' && chmod 777 '$DEFAULT_KERNEL_EX_DIR'"
         val (code, _) = RootService.runCommandSync(cmd)
         code == 0
     }
 
-    // ==================== 文件列表扫描与属性解析分区 ====================
     suspend fun listFiles(dirPath: String): List<FileItem> = withContext(Dispatchers.IO) {
         val targetPath = if (dirPath.isEmpty()) "/" else dirPath
         val items = mutableListOf<FileItem>()
 
         val escapedPath = targetPath.replace("'", "'\\''")
-
-        // 采用通用的 shell 循环与 stat 组合，彻底规避各种 Android ROM 下 ls -la 日期与字段格式差异导致的解析失败
         val cmd = "cd '$escapedPath' 2>/dev/null && for f in .* *; do [ -e \"\$f\" ] || continue; [ \"\$f\" = \".\" ] && continue; [ \"\$f\" = \"..\" ] && continue; [ -d \"\$f\" ] && d=1 || d=0; s=\$(stat -c %s \"\$f\" 2>/dev/null || echo 0); echo \"\$d|\$s|\$f\"; done"
         val (exitCode, output) = RootService.runCommandSync(cmd)
 
@@ -62,7 +59,6 @@ object RootFileManager {
             }
         }
 
-        // 若 Root 扫描无果且属于可直接读取目录，则尝试 Java 标准 File API 兜底
         if (items.isEmpty()) {
             try {
                 val localFiles = File(targetPath).listFiles()
@@ -83,7 +79,6 @@ object RootFileManager {
             }
         }
 
-        // 去重并优先展示文件夹，其次按名称升序排列
         items.distinctBy { it.path }
             .sortedWith(
                 compareByDescending<FileItem> { it.isDirectory }
@@ -91,7 +86,6 @@ object RootFileManager {
             )
     }
 
-    // ==================== 添加到 KernelEX 功能分区 ====================
     suspend fun addFileToKernelEX(
         sourcePath: String,
         useIndependentFolder: Boolean,
@@ -133,13 +127,11 @@ object RootFileManager {
         Pair(true, destinationPath)
     }
 
-    // ==================== 文件重命名分区（防路径穿透安全校验） ====================
     suspend fun rename(oldPath: String, newName: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
         val sanitized = newName.trim()
         if (sanitized.isEmpty()) {
             return@withContext Pair(false, "文件名不能为空")
         }
-        // 防路径跨目录穿透漏洞
         if (sanitized.contains("/") || sanitized.contains("\\") || sanitized.contains("..") || sanitized.contains("\u0000")) {
             return@withContext Pair(false, "文件名不能包含路径分隔符或非法字符")
         }
@@ -154,7 +146,6 @@ object RootFileManager {
         Pair(code == 0, if (code == 0) "重命名成功" else out)
     }
 
-    // ==================== 文件删除分区 ====================
     suspend fun delete(path: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
         val escaped = path.replace("'", "'\\''")
         val cmd = "rm -rf '$escaped'"

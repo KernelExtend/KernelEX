@@ -1,10 +1,15 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend.ui.pages
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -54,7 +59,6 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowDialog
 import java.io.File
 
-// 文件管理页面：支持浏览内部存储与ROOT全盘、快捷跳转、长按添加到KernelEX/重命名/删除
 @Composable
 fun FilePage(
     appSettings: AppSettings,
@@ -62,25 +66,27 @@ fun FilePage(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val isMaterial = appSettings.appThemeOption == AppSettings.THEME_MATERIAL
 
-    // 默认初始目录：内部存储 (/storage/emulated/0)
     var currentDirectory by remember { mutableStateOf("/storage/emulated/0") }
     var fileList by remember { mutableStateOf<List<FileItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
 
-    // 长按操作弹窗状态
     var selectedItem by remember { mutableStateOf<FileItem?>(null) }
     var showActionDialog by remember { mutableStateOf(false) }
 
-    // 重命名与删除弹窗
     var showRenameDialog by remember { mutableStateOf(false) }
     var renameInput by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // 操作结果反馈提示
+    var showJumpPathDialog by remember { mutableStateOf(false) }
+    var jumpPathInput by remember { mutableStateOf("") }
+
+    var showFontPreviewDialog by remember { mutableStateOf(false) }
+    var previewFontItem by remember { mutableStateOf<FileItem?>(null) }
+
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
 
-    // 扫描加载当前目录
     fun refresh() {
         isLoading = true
         scope.launch {
@@ -108,7 +114,6 @@ fun FilePage(
 
     Scaffold(
         topBar = {
-            // 统一左上角大标题：文件管理器
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -132,16 +137,14 @@ fun FilePage(
                 .padding(innerPadding)
                 .padding(horizontal = 14.dp, vertical = 4.dp)
         ) {
-            // ==================== 1. 路径导航与快捷跳转分区 ====================
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(if (isMaterial) RoundedCornerShape(16.dp) else RoundedCornerShape(14.dp))
                     .background(MiuixTheme.colorScheme.surfaceContainer)
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // 当前路径行 + 返回上一级
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -160,24 +163,36 @@ fun FilePage(
                         )
                     }
 
-                    Text(
-                        text = currentDirectory,
-                        style = MiuixTheme.textStyles.footnote1,
-                        fontFamily = FontFamily.Monospace,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    BoxWithConstraints(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(horizontal = 4.dp)
-                    )
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                jumpPathInput = currentDirectory
+                                showJumpPathDialog = true
+                            }
+                            .padding(start = 2.dp, end = 2.dp, top = 4.dp, bottom = 4.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        val approxChars = (maxWidth.value / 7.6f).toInt().coerceAtLeast(16)
+                        val displayPath = if (currentDirectory.length > approxChars) {
+                            "..." + currentDirectory.takeLast(approxChars - 3)
+                        } else {
+                            currentDirectory
+                        }
+                        Text(
+                            text = displayPath,
+                            style = MiuixTheme.textStyles.footnote1,
+                            fontFamily = FontFamily.Monospace,
+                            maxLines = 1
+                        )
+                    }
                 }
 
-                // 快捷跳转目录按钮行（根目录 / 内部存储 / KernelEX 目录）
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // 跳转 1: 根目录 (/)
                     Button(
                         onClick = { currentDirectory = "/" },
                         colors = ButtonDefaults.buttonColors(
@@ -185,12 +200,11 @@ fun FilePage(
                             contentColor = if (currentDirectory == "/") MiuixTheme.colorScheme.onPrimary else MiuixTheme.colorScheme.onSurface
                         ),
                         insideMargin = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        modifier = Modifier.weight(1f)
+                        modifier = if (isMaterial) Modifier.weight(1f).clip(RoundedCornerShape(20.dp)) else Modifier.weight(1f)
                     ) {
                         Text("根目录 (/)", fontSize = 12.sp)
                     }
 
-                    // 跳转 2: 内部存储 (/storage/emulated/0)
                     Button(
                         onClick = { currentDirectory = "/storage/emulated/0" },
                         colors = ButtonDefaults.buttonColors(
@@ -198,12 +212,11 @@ fun FilePage(
                             contentColor = if (currentDirectory == "/storage/emulated/0") MiuixTheme.colorScheme.onPrimary else MiuixTheme.colorScheme.onSurface
                         ),
                         insideMargin = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        modifier = Modifier.weight(1.2f)
+                        modifier = if (isMaterial) Modifier.weight(1.2f).clip(RoundedCornerShape(20.dp)) else Modifier.weight(1.2f)
                     ) {
                         Text("内部存储", fontSize = 12.sp)
                     }
 
-                    // 跳转 3: KernelEX 目录 (/data/adb/KernelEX)
                     Button(
                         onClick = { currentDirectory = RootFileManager.DEFAULT_KERNEL_EX_DIR },
                         colors = ButtonDefaults.buttonColors(
@@ -211,7 +224,7 @@ fun FilePage(
                             contentColor = if (currentDirectory == RootFileManager.DEFAULT_KERNEL_EX_DIR) MiuixTheme.colorScheme.onPrimary else MiuixTheme.colorScheme.onSurface
                         ),
                         insideMargin = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        modifier = Modifier.weight(1.3f)
+                        modifier = if (isMaterial) Modifier.weight(1.3f).clip(RoundedCornerShape(20.dp)) else Modifier.weight(1.3f)
                     ) {
                         Text("KernelEX目录", fontSize = 12.sp)
                     }
@@ -220,7 +233,6 @@ fun FilePage(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // ==================== 2. 文件列表展示分区 ====================
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -244,21 +256,17 @@ fun FilePage(
                     ) {
                         itemsIndexed(fileList, key = { index, item -> "${item.path}_$index" }) { _, item ->
                             val isExecutable = item.isExecutableScript || item.isExecutableBinary
+                            val isFontFile = !item.isDirectory && (item.name.endsWith(".ttf", ignoreCase = true) || item.name.endsWith(".otf", ignoreCase = true))
 
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(if (isMaterial) RoundedCornerShape(16.dp) else RoundedCornerShape(12.dp))
                                     .background(MiuixTheme.colorScheme.surfaceContainer)
                                     .combinedClickable(
                                         onClick = {
                                             if (item.isDirectory) {
                                                 currentDirectory = item.path
-                                            } else if (isExecutable) {
-                                                onExecuteFileAndNavigate(item.path)
-                                            } else {
-                                                selectedItem = item
-                                                showActionDialog = true
                                             }
                                         },
                                         onLongClick = {
@@ -269,7 +277,6 @@ fun FilePage(
                                     .padding(horizontal = 14.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // 文件类型徽标
                                 Box(
                                     modifier = Modifier
                                         .size(38.dp)
@@ -279,6 +286,7 @@ fun FilePage(
                                                 item.isDirectory -> MiuixTheme.colorScheme.primary.copy(0.15f)
                                                 item.isExecutableScript -> Color(0xFF4CAF50).copy(0.2f)
                                                 item.isExecutableBinary -> Color(0xFF2196F3).copy(0.2f)
+                                                isFontFile -> Color(0xFF9C27B0).copy(0.2f)
                                                 else -> MiuixTheme.colorScheme.surfaceContainerHighest
                                             }
                                         ),
@@ -289,13 +297,16 @@ fun FilePage(
                                             item.isDirectory -> "📁"
                                             item.isExecutableScript -> "SH"
                                             item.isExecutableBinary -> "SO"
+                                            isFontFile -> if (item.name.endsWith(".otf", ignoreCase = true)) "OTF" else "TTF"
                                             else -> "📄"
                                         },
-                                        fontSize = if (item.isDirectory || !isExecutable) 16.sp else 12.sp,
+                                        fontSize = if (item.isDirectory || (!isExecutable && !isFontFile)) 16.sp else 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = when {
+                                            item.isDirectory -> MiuixTheme.colorScheme.primary
                                             item.isExecutableScript -> Color(0xFF2E7D32)
                                             item.isExecutableBinary -> Color(0xFF1565C0)
+                                            isFontFile -> Color(0xFF7B1FA2)
                                             else -> MiuixTheme.colorScheme.onSurfaceSecondary
                                         }
                                     )
@@ -307,7 +318,7 @@ fun FilePage(
                                     Text(
                                         text = item.name,
                                         style = MiuixTheme.textStyles.body1,
-                                        fontWeight = if (isExecutable) FontWeight.SemiBold else FontWeight.Normal,
+                                        fontWeight = FontWeight.Normal,
                                         color = MiuixTheme.colorScheme.onSurface,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -341,9 +352,25 @@ fun FilePage(
                                             color = MiuixTheme.colorScheme.primary,
                                             contentColor = MiuixTheme.colorScheme.onPrimary
                                         ),
-                                        insideMargin = PaddingValues(horizontal = 10.dp, vertical = 3.dp)
+                                        insideMargin = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
+                                        modifier = if (isMaterial) Modifier.clip(RoundedCornerShape(20.dp)) else Modifier
                                     ) {
                                         Text("执行", fontSize = 12.sp)
+                                    }
+                                } else if (isFontFile) {
+                                    Button(
+                                        onClick = {
+                                            previewFontItem = item
+                                            showFontPreviewDialog = true
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            color = MiuixTheme.colorScheme.primary,
+                                            contentColor = MiuixTheme.colorScheme.onPrimary
+                                        ),
+                                        insideMargin = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
+                                        modifier = if (isMaterial) Modifier.clip(RoundedCornerShape(20.dp)) else Modifier
+                                    ) {
+                                        Text("预览", fontSize = 12.sp)
                                     }
                                 }
                             }
@@ -356,7 +383,6 @@ fun FilePage(
         }
     }
 
-    // ==================== 3. 长按功能弹窗分区 ====================
     if (showActionDialog && selectedItem != null) {
         val item = selectedItem!!
         WindowDialog(
@@ -370,7 +396,6 @@ fun FilePage(
                     .padding(horizontal = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // 功能1: 添加到KernelEX
                 Button(
                     onClick = {
                         showActionDialog = false
@@ -400,7 +425,6 @@ fun FilePage(
                     Text("添加到KernelEX")
                 }
 
-                // 功能2: 重命名
                 Button(
                     onClick = {
                         showActionDialog = false
@@ -416,7 +440,6 @@ fun FilePage(
                     Text("重命名")
                 }
 
-                // 功能3: 删除
                 Button(
                     onClick = {
                         showActionDialog = false
@@ -434,7 +457,6 @@ fun FilePage(
         }
     }
 
-    // ==================== 4. 重命名弹窗分区 ====================
     if (showRenameDialog && selectedItem != null) {
         val item = selectedItem!!
         WindowDialog(
@@ -494,7 +516,6 @@ fun FilePage(
         }
     }
 
-    // ==================== 5. 删除确认弹窗分区 ====================
     if (showDeleteDialog && selectedItem != null) {
         val item = selectedItem!!
         WindowDialog(
@@ -534,6 +555,166 @@ fun FilePage(
                     )
                 ) {
                     Text("确认删除")
+                }
+            }
+        }
+    }
+
+    if (showJumpPathDialog) {
+        WindowDialog(
+            show = true,
+            title = "跳转路径",
+            summary = "请输入要跳转的目标文件夹绝对路径：",
+            onDismissRequest = { showJumpPathDialog = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                TextField(
+                    value = jumpPathInput,
+                    onValueChange = { jumpPathInput = it },
+                    label = "路径（例如 /data/adb/modules）",
+                    useLabelAsPlaceholder = true,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = { showJumpPathDialog = false },
+                        colors = ButtonDefaults.buttonColors(
+                            color = MiuixTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MiuixTheme.colorScheme.onSurface
+                        )
+                    ) {
+                        Text("取消")
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Button(
+                        enabled = jumpPathInput.isNotBlank(),
+                        onClick = {
+                            var targetPath = jumpPathInput.trim()
+                            if (!targetPath.startsWith("/")) {
+                                targetPath = "/$targetPath"
+                            }
+                            showJumpPathDialog = false
+                            currentDirectory = targetPath
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            color = MiuixTheme.colorScheme.primary,
+                            contentColor = MiuixTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Text("跳转")
+                    }
+                }
+            }
+        }
+    }
+
+    if (showFontPreviewDialog && previewFontItem != null) {
+        val targetItem = previewFontItem!!
+        val targetFontFamily = remember(targetItem.path) {
+            try {
+                FontFamily(android.graphics.Typeface.createFromFile(File(targetItem.path)))
+            } catch (_: Exception) {
+                FontFamily.Default
+            }
+        }
+        var customTestText by remember { mutableStateOf("") }
+
+        WindowDialog(
+            show = true,
+            title = "字体预览",
+            summary = "${targetItem.name} (${targetItem.formattedSize})",
+            onDismissRequest = { showFontPreviewDialog = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MiuixTheme.colorScheme.surfaceContainerHighest)
+                        .padding(12.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = if (customTestText.isNotEmpty()) customTestText else "KernelEX 任务调度引擎",
+                            fontFamily = targetFontFamily,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MiuixTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz 0123456789",
+                            fontFamily = targetFontFamily,
+                            fontSize = 12.sp,
+                            color = MiuixTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "天地玄黄 宇宙洪荒 日月盈昃 辰宿列张\n极速流式任务调度 高并发内核增强",
+                            fontFamily = targetFontFamily,
+                            fontSize = 12.sp,
+                            color = MiuixTheme.colorScheme.onSurfaceSecondary
+                        )
+                    }
+                }
+
+                TextField(
+                    value = customTestText,
+                    onValueChange = { customTestText = it },
+                    label = "输入任意文字实时预览效果...",
+                    useLabelAsPlaceholder = true,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            try {
+                                val destFile = File(context.filesDir, "custom_app_font.ttf")
+                                File(targetItem.path).copyTo(destFile, overwrite = true)
+                                appSettings.setCustomFont(destFile.absolutePath, targetItem.name)
+                                Toast.makeText(context, "已成功应用为软件字体: ${targetItem.name}", Toast.LENGTH_SHORT).show()
+                                showFontPreviewDialog = false
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "应用字体失败: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            color = MiuixTheme.colorScheme.primary,
+                            contentColor = MiuixTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.weight(1.2f)
+                    ) {
+                        Text("应用为软件字体", fontSize = 12.sp)
+                    }
+
+                    Button(
+                        onClick = { showFontPreviewDialog = false },
+                        colors = ButtonDefaults.buttonColors(
+                            color = MiuixTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MiuixTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier.weight(0.8f)
+                    ) {
+                        Text("关闭", fontSize = 12.sp)
+                    }
                 }
             }
         }

@@ -1,3 +1,6 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend.ui.components
 
 import androidx.compose.foundation.background
@@ -48,7 +51,6 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowDialog
 import java.io.File
 
-// 内置文件选择器弹窗组件：用于主页选择 .sh 和 .so 执行目标
 @Composable
 fun BuiltInFilePicker(
     show: Boolean,
@@ -64,7 +66,6 @@ fun BuiltInFilePicker(
     var selectedFile by remember { mutableStateOf<FileItem?>(null) }
     var isLoading by remember { mutableStateOf(false) }
 
-    // 扫描当前目录文件
     fun loadDirectory(path: String) {
         isLoading = true
         selectedFile = null
@@ -97,7 +98,6 @@ fun BuiltInFilePicker(
                 .padding(horizontal = 4.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // ==================== 1. 路径导航与快捷跳转分区 ====================
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -134,7 +134,6 @@ fun BuiltInFilePicker(
                     )
                 }
 
-                // 快捷位置切换按钮组
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -177,7 +176,6 @@ fun BuiltInFilePicker(
                 }
             }
 
-            // ==================== 2. 文件列表展示与单选分区 ====================
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -222,7 +220,6 @@ fun BuiltInFilePicker(
                                     .padding(horizontal = 10.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // 文件标识图标
                                 Box(
                                     modifier = Modifier
                                         .size(30.dp)
@@ -260,7 +257,7 @@ fun BuiltInFilePicker(
                                     Text(
                                         text = item.name,
                                         style = MiuixTheme.textStyles.body2,
-                                        fontWeight = if (isSupported) FontWeight.SemiBold else FontWeight.Normal,
+                                        fontWeight = FontWeight.Normal,
                                         color = if (item.isDirectory || isSupported) MiuixTheme.colorScheme.onSurface else MiuixTheme.colorScheme.onSurfaceSecondary.copy(0.6f),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -286,7 +283,6 @@ fun BuiltInFilePicker(
                 }
             }
 
-            // ==================== 3. 底部确定与取消分区 ====================
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,

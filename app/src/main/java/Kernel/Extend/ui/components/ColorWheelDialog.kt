@@ -1,3 +1,6 @@
+// Copyright 2026, KernelEX contributors
+// SPDX-License-Identifier: Apache-2.0
+
 package Kernel.Extend.ui.components
 
 import androidx.compose.animation.animateColorAsState
@@ -50,37 +53,30 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowDialog
 import kotlin.math.roundToInt
 
-// 预设高频终端主题颜色模型
 private data class PresetColorItem(
     val name: String,
     val color: Color
 )
 
-// 16 款精选终端极客配色预设（4大色系整齐排列）
 private val PRESET_COLOR_GROUPS = listOf(
-    // 经典终端绿系
     PresetColorItem("荧光绿", Color(0xFF00E676)),
     PresetColorItem("黑客绿", Color(0xFF00FF00)),
     PresetColorItem("薄荷绿", Color(0xFF69F0AE)),
     PresetColorItem("翠绿", Color(0xFF4CAF50)),
-    // 极客蓝青系
     PresetColorItem("赛博青", Color(0xFF00E5FF)),
     PresetColorItem("电光蓝", Color(0xFF448AFF)),
     PresetColorItem("深海蓝", Color(0xFF2979FF)),
     PresetColorItem("冰晶蓝", Color(0xFF80D8FF)),
-    // 活力暖色系
     PresetColorItem("琥珀黄", Color(0xFFFFD54F)),
     PresetColorItem("荧光金", Color(0xFFFFEA00)),
     PresetColorItem("霓虹橙", Color(0xFFFF9100)),
     PresetColorItem("珊瑚橙", Color(0xFFFF6E40)),
-    // 个性炫彩系
     PresetColorItem("警示红", Color(0xFFFF5252)),
     PresetColorItem("极客粉", Color(0xFFFF4081)),
     PresetColorItem("霓虹紫", Color(0xFFE040FB)),
     PresetColorItem("极光白", Color(0xFFFFFFFF))
 )
 
-// 颜色选择弹窗：滚轮指示器直接置于色块上方
 @Composable
 fun ColorWheelDialog(
     show: Boolean,
@@ -92,7 +88,6 @@ fun ColorWheelDialog(
 
     val density = LocalDensity.current
 
-    // HSV 初始值分解计算
     val initialHsv = remember(initialColor) {
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(initialColor.toArgb(), hsv)
@@ -103,18 +98,15 @@ fun ColorWheelDialog(
     var saturation by remember { mutableFloatStateOf(initialHsv[1]) }
     var value by remember { mutableFloatStateOf(initialHsv[2]) }
 
-    // 当前选定颜色
     val currentColor = remember(hue, saturation, value) {
         Color.hsv(hue, saturation.coerceIn(0.01f, 1f), value.coerceIn(0.01f, 1f))
     }
 
-    // 格式化十六进制颜色码
     val hexString = remember(currentColor) {
         val argb = currentColor.toArgb()
         String.format("#%06X", 0xFFFFFF and argb)
     }
 
-    // 色相彩虹渐变画刷
     val rainbowBrush = remember {
         Brush.horizontalGradient(
             colors = listOf(
@@ -135,7 +127,6 @@ fun ColorWheelDialog(
                 .padding(horizontal = 4.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // ==================== 1. 实时终端控制台效果预览分区 ====================
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -182,7 +173,6 @@ fun ColorWheelDialog(
                 )
             }
 
-            // ==================== 2. 彩虹全色相色块（滚轮直接置于色块上） ====================
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = "色相",
@@ -223,7 +213,6 @@ fun ColorWheelDialog(
                     val thumbDiameterPx = with(density) { thumbDiameter.toPx() }
                     val thumbX = (hue / 360f * (widthPx - thumbDiameterPx)).coerceIn(0f, widthPx - thumbDiameterPx)
 
-                    // 直接位于色块上的圆形选色滚轮游标
                     Box(
                         modifier = Modifier
                             .offset { IntOffset(thumbX.roundToInt(), with(density) { 3.dp.toPx().roundToInt() }) }
@@ -239,7 +228,6 @@ fun ColorWheelDialog(
                 }
             }
 
-            // ==================== 3. 明暗度调节色块（滚轮直接置于色块上） ====================
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = "明暗",
@@ -289,7 +277,6 @@ fun ColorWheelDialog(
                     val progress = ((value - 0.2f) / 0.8f).coerceIn(0f, 1f)
                     val thumbX = (progress * (widthPx - thumbDiameterPx)).coerceIn(0f, widthPx - thumbDiameterPx)
 
-                    // 直接位于色块上的明暗滚轮游标
                     Box(
                         modifier = Modifier
                             .offset { IntOffset(thumbX.roundToInt(), with(density) { 3.dp.toPx().roundToInt() }) }
@@ -305,7 +292,6 @@ fun ColorWheelDialog(
                 }
             }
 
-            // ==================== 4. 16 款精选终端配色网格分区 ====================
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = "预设",
@@ -372,7 +358,6 @@ fun ColorWheelDialog(
                 }
             }
 
-            // ==================== 5. 底部操作按键分区 ====================
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

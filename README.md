@@ -1,9 +1,9 @@
 <div align="center">
 
 # ⚡ KernelEX
-------
+
 **以下软件介绍和网站都是AI写的，所以内容可能会与我的开发初衷不同，你就把这个软件当成一个终端就行了（（（**
-------
+
 **下一代 Android 高性能 ROOT 任务调度与执行引擎**
 
 [![Release](https://img.shields.io/github/v/release/KernelExtend/KernelEX?style=flat-square&color=00e5ff&label=Release)](https://github.com/KernelExtend/KernelEX/releases)

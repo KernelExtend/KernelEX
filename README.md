@@ -1,7 +1,3 @@
-# KernelEX
-
-<div align="center">
-
 # ⚡ KernelEX
 
 **下一代 Android 高性能 ROOT 任务调度与执行引擎**

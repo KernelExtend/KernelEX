@@ -2,15 +2,11 @@
 
 <div align="center">
 
-<<<<<<< HEAD
 # ⚡ KernelEX
 
-**以下软件介绍和网站都是AI写的，所以内容可能会与我的开发初衷不同，你就把这个软件当成一个终端就行了（（（**
-
-**下一代 Android 高性能 ROOT 任务调度与执行引擎[嗯对这句也是AI写的]**
+**下一代 Android 高性能 ROOT 任务调度与执行引擎**
 =======
 **专为 Android ROOT 环境打造的可视化脚本与原生程序执行工具**
->>>>>>> b9dda7c (docs: 重写真实、清晰且专业的 README.md)
 
 [![Release](https://img.shields.io/github/v/release/KernelExtend/KernelEX?style=flat-square&color=00e5ff&label=Release)](https://github.com/KernelExtend/KernelEX/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)

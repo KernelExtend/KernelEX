@@ -1,9 +1,9 @@
-# ⚡ KernelEX
+<center># ⚡ KernelEX
 
 **下一代 Android 高性能 ROOT 任务调度与执行引擎**
 =======
 **专为 Android ROOT 环境打造的可视化脚本与原生程序执行工具**
-
+</center>
 [![Release](https://img.shields.io/github/v/release/KernelExtend/KernelEX?style=flat-square&color=00e5ff&label=Release)](https://github.com/KernelExtend/KernelEX/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Android](https://img.shields.io/badge/Android-8.0%2B%20%28API%2026%2B%29-3DDC84.svg?style=flat-square&logo=android&logoColor=white)](https://developer.android.com)
